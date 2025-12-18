@@ -6,14 +6,26 @@ IFS=$'\n\t'
 # LIBRAIRIES ET VARIABLES GLOBALES #
 ####################################
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Importer les librairies
-source "$SCRIPT_DIR/lib/utils.sh"
+# Demander l'élévation des privilèges dès le début
+sudo -v
 
 # Variables globales
+BB_CFG_DIR="$HOME/.config/bigbox"
+BB_CFG_FILE_ALIAS="alias"
+BB_CFG_FILE_AUTOCOMPLETION="autocompletion"
 DEBUG=false
-UBUNTU_MINI_VERSION=24
+SHOW_VERSION=false
+SHOW_BANNER=true
+SHOW_EASTER_EGGS=false
+
+# Bonne pratique, pour définir le répertoire du script
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+# Importer les librairies
+source "$SCRIPT_DIR/lib/log.sh"
+source "$SCRIPT_DIR/lib/util.sh"
+source "$SCRIPT_DIR/lib/system.sh"
+source "$SCRIPT_DIR/lib/task.sh"
 
 # Parser les arguments d'entrée
 parse_args "$@"
@@ -22,74 +34,46 @@ parse_args "$@"
 # DEBUT DE L'INSTALLATION #
 ###########################
 
-cat <<EOF
-
-██████╗ ██╗ ██████╗ ██████╗  ██████╗ ██╗  ██╗ 
-██╔══██╗██║██╔════╝ ██╔══██╗██╔═══██╗╚██╗██╔╝ 
-██████╔╝██║██║  ███╗██████╔╝██║   ██║ ╚███╔╝  
-██╔══██╗██║██║   ██║██╔══██╗██║   ██║ ██╔██╗  
-██████╔╝██║╚██████╔╝██████╔╝╚██████╔╝██╔╝ ██╗    
-╚═════╝ ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝ 
-
-EOF
+show_infos
 
 ######################
 ### 1 - PRE-REQUIS ###
 ######################
 
-cat <<EOF
+step "Vérification des pré-requis" "🔎"
 
-1️⃣   Vérification des pré-requis
-
-EOF
-
-# Vérification de la version Ubuntu
-UBUNTU_VERSION=$(lsb_release -rs)
-UBUNTU_MAJOR_VERSION=${UBUNTU_VERSION%%.*}
-if (( UBUNTU_MAJOR_VERSION < UBUNTU_MINI_VERSION )); then
-
-cat <<EOF
-    ❌ Une version majeure d'Ubuntu $UBUNTU_MINI_VERSION+ est requise
-
-    ℹ️ La version majeure actuelle est $UBUNTU_VERSION
-    
-    🔄 Mettez à jour la version de la distribution Ubuntu
-    sudo do-release-upgrade
-
-    Après la mise à jour, relancez ce script d'installation
-EOF
-
-exit 1
-
-fi
-
-echo -e "\t✅ Version d'Ubuntu $UBUNTU_VERSION"
+task "Version d'Ubuntu" verify_ubuntu_version
 
 # Mise à jour des répos et paquets
-task "MàJ des dépôts et paquets" sudo apt-get update -y && \
-    sudo apt-get upgrade -y
+task "MàJ des dépôts et paquets" apt_wrapper update -y && \
+    apt_wrapper upgrade -y
 
 ################
 # 2 - Basiques #
 ################
 
-cat <<EOF
+step "Installation des dépôts et paquets de base" "🧱"
 
-2️⃣   Installation des dépôts et paquets de base
+# Rien pour le moment
+task "Installation des dépôts requis" echo N/A 
 
-EOF
-
-task "Installation des paquets requis" sudo apt-get install -y \
-    curl \
-    wget \
+task "Installation des paquets requis" apt_wrapper install -y \
     apt-transport-https \
+    bash-completion \
+    curl \
+    ca-certificates \
     git \
-    jq
+    jq \
+    unzip \
+    wget
 
-# 2. Installer dépendances systèmes
-# 3. Installer Docker
-# 4. Installer MicroK8s et configurer addons
-# 5. Installer kubectl et Helm
-# 6. Installer clients Postgres, NATS
-# 7. Créer namespace dev et services de base (optionnel)
-# 8. Fin
+step "Installation de snapd" "📦"
+task "Installation de snapd" install_snapd
+
+step "Installation de Docker" "\ue7b0"
+task "Installation de Docker" install_docker
+
+step "Installation de k8s" "\ue81d"
+task "Installation de microk8s" install_microk8s
+task "Installation des outils k8s" install_k8s_tools
+task "Configuration des outils k8s" configure_k8s_tools

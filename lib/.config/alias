@@ -1,0 +1,14 @@
+# Fichier contenant les alias générés par la BigBox
+# Il est possible de les désactiver individuellement en les commentant et en rechargeant le bashrc via la commande :
+#   source ~/.bashrc
+
+alias h='helm'
+alias hr='h repo update'
+alias hu='h upgrade --install'
+alias hl='h ls'
+alias kubectl='kubecolor'
+alias k='kubecolor'
+alias watch='KUBECOLOR_FORCE_COLORS=auto watch --color'
+alias kc='kubectx'
+alias kn='kubens'
+alias kw='watch -d -n 5 -t kubecolor get pod'
