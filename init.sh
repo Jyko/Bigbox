@@ -8,7 +8,7 @@ sudo apt upgrade -y
 ## DEPUIS LA DOCUMENTATION OFFICIELLE DOCKER ##
 ###############################################
 
-# Remove potential conflicting packages
+# Nettoyer les anciennes installations de Docker et consorts
 sudo apt remove $(dpkg --get-selections docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc | cut -f1) -y
 
 # Installer la clé GPG officielle de Docker
@@ -67,4 +67,5 @@ nats --version
 ############
 # SSH KEYS #
 ############
+
 sudo ssh-keygen -t ed25519 -f ~/.ssh/sftp_key -C "SFTP KEY" -N "" -y

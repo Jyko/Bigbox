@@ -27,13 +27,6 @@ services:
     depends_on:
       - nui
 
-  nats-box:
-    image: natsio/nats-box:latest
-    container_name: nats-box
-    profiles: ['nats']
-    networks:
-      - nats_network
-
   nui:
     image: ghcr.io/nats-nui/nui:latest
     container_name: nui
