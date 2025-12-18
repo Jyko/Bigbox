@@ -13,7 +13,7 @@ parse_args() {
                 show_help
                 exit 0
                 ;;
-            --easter-eggs)
+            --ee|--easter-eggs)
                 SHOW_EASTER_EGGS=true
                 shift
                 ;;
@@ -93,6 +93,9 @@ apt_wrapper() {
 }
 
 # Décorateur pour snapd afin de gérer les installations déjà existantes
+# $1 cmd : La commande Snapd à exécuter
+# $2 snap : Le package Snap contre lequel jouer la commande Snapd
+# $3 flags... : Les flags supplémentaires (optionnal)
 snap_wrapper() {
     local cmd="$1"
     local snap="$2"

@@ -1,12 +1,16 @@
 # Installer Snapd
 install_snapd() {
+
     apt_wrapper install -y snapd
     snap version
+    
 }
 
 # Installer Docker
 install_docker() {
+
     snap_wrapper install docker
+
 }
 
 # Configurer Docker
@@ -16,6 +20,7 @@ configure_docker() {
     sudo usermod -aG docker "$USER"
 
     sudo snap restart docker
+
 }
 
 # Installer microk8s et kubectx
@@ -29,6 +34,7 @@ install_microk8s() {
     # Créer le répertoire de configuration K8S et rendre $USER propriétaire
     mkdir -p ~/.kube
     sudo chown -f -R $USER ~/.kube
+
 }
 
 install_k8s_tools() {

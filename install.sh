@@ -70,10 +70,18 @@ task "Installation des paquets requis" apt_wrapper install -y \
 step "Installation de snapd" "📦"
 task "Installation de snapd" install_snapd
 
+##############
+# 3 - Docker #
+##############
+
 step "Installation de Docker" "\ue7b0"
 task "Installation de Docker" install_docker
 
-step "Installation de k8s" "\ue81d"
+##################
+# 4 - Kubernetes #
+##################
+
+step "Installation de Kubernetes" "\ue81d"
 task "Installation de microk8s" install_microk8s
-task "Installation des outils k8s" install_k8s_tools
-task "Configuration des outils k8s" configure_k8s_tools
+task "Installation des outils Kubernetes" install_k8s_tools
+task "Configuration des outils Kubernetes" configure_k8s_tools
