@@ -131,26 +131,42 @@ snap_wrapper() {
     
 }
 
-# Créer le fichier de configuration et remplacer si celui-ci existe déjà
-# $1 filename : Le nom du fichier de configuration à créer
-# $2 content : Le contenu du fichier à créer
-create_configuration_file() {
-    local conf_filename="$1"
-    local conf_filepath="$BB_CFG_DIR/$conf_filename"
-    local src_filepath="$2"
+# Retourne la nouvelle valeur d'une variable d'env après la concaténation de cette valeur
+# avec les anciennes connues. Ne modifie pas cette variable d'env.
+#
+# $1 var        : Le nom de cette variable d'env
+# $2 value      : La nouvelle valeur de cette variable d'env à concaténer ou remplacer
+# $3 separator  : Le séparateur entre chaque valeur de la variable d'env, si celui-ci est différent
+#                 de ":" (optionnal) (default: ":")
+#
+# Exemple :
+#
+# KUBECONFIG:$HOME/.kube/config
+# echo "$(add_value_to_varenv KUBECONFIG "$HOME/.kube/nouvelle_valeur)"
+# $ $HOME/.kube/config:$HOME/.kube/nouvelle_valeur
+# echo KUBECONFIG
+# $ $HOME/.kube/config
+append_value_to_var() {
+    local var="$1"
+    local value="$2"
+    local separator="${3:-:}"
 
-    mkdir -p "$BB_CFG_DIR"
-    cp -f "$src_filepath" "$conf_filepath"
+    local current_value="${!var}"
+    local result
 
-}
+    case "$separator$current_value$separator" in
+        *"$separator$value$separator"*)
+            result="$current_value"
+            ;;
+        *)
+            if [[ -n "$current_value" ]]; then
+                result="$current_value$separator$value"
+            else
+                result="$value"
+            fi
+            ;;
+    esac
 
-add_to_bashrc() {
-    local conf_filename="$1"
-    local conf_filepath="$BB_CFG_DIR/$conf_filename"
-
-    # Ajouter la commande source que si elle n'existe pas déjà dans le .bashrc
-    if ! grep -Fxq "source $conf_filepath" "$HOME/.bashrc"; then
-        echo "source $conf_filepath" >> "$HOME/.bashrc"
-    fi
+    echo "$result";
 
 }

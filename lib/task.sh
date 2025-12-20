@@ -58,13 +58,55 @@ install_k8s_tools() {
 
 configure_k8s_tools() {
 
-    # Des alias et de l'autocomplétion parce que sinon on s'emmerde !
-    create_configuration_file "$BB_CFG_FILE_ALIAS" "$SCRIPT_DIR/lib/.config/$BB_CFG_FILE_ALIAS"
-    create_configuration_file "$BB_CFG_FILE_AUTOCOMPLETION" "$SCRIPT_DIR/lib/.config/$BB_CFG_FILE_AUTOCOMPLETION"
+    local category="kubernetes"
 
-    add_to_bashrc "$BB_CFG_FILE_ALIAS"
-    add_to_bashrc "$BB_CFG_FILE_AUTOCOMPLETION"
+    local k8s_aliases_fn="kubernetes_aliases.sh"
+    install_dotfile "$k8s_aliases_fn" "$category" 
+    source_dotfile "$k8s_aliases_fn" "$category" 
 
-    source "$HOME/.bashrc"
+    local k8s_autocompletion_fn="kubernetes_autocompletion.sh"
+    install_dotfile "$k8s_autocompletion_fn" "$category" 
+    source_dotfile "$k8s_autocompletion_fn" "$category" 
+
+    ############################################
+    # CONFIGURATION du $HOME/.kube/config.yaml #
+    ############################################
+    local kube_dir="$HOME/.kube"
+    local standard_file="$kube_dir/config"
+    local unified_file="$kube_dir/unified-configs.yaml"
+    local backup_file="$kube_dir/backup-config.yaml"
+    local bigbox_file="$kube_dir/bigbox.yaml"
+
+    # Backup des anciennes configurations et des symlinks si il en existe
+    if [ -f "$standard_file" ] && [ ! -L "$standard_file" ]; then
+        mv "$standard_file" "$backup_file"
+    fi
+
+    # Est-ce qu'il existe déjà un contexte BigBox dans l'ancienne configuration ?
+    local need_merge=1
+    local bigbox_context="bigbox"
+
+    if sudo kubectl --kubeconfig="$backup_file" config get-contexts -o name 2>&1 \
+        | grep -q "^$bigbox_context$"; then
+
+        # Pas besoin de merge l'ancienne configuration avec une nouvelle, le contexte bigbox est déjà configuré
+        echo "▬ Le contexte $bigbox_context est déjà présent dans l'ancienne configuration Kubenertes"
+        need_merge=1
+    else
+        # Il va falloir merge l'ancienne configuration avec une nouvelle pour y ajouter le contexte bigbox
+        echo "✚ Le contexte $bigbox_context n'existe pas dans l'ancienne configuration Kubenertes"
+        need_merge=0
+
+        # Générer le fichier de configuration
+        sudo microk8s config > "$bigbox_file"
+        # Renommer le contexte pour éviter les conflits et éviter les duplicats
+        sudo kubectl --kubeconfig="$bigbox_file" config rename-context microk8s "$bigbox_context"
+    fi
+
+    # Génération de la configuration unifiée avec ou sans merge
+    KUBECONFIG="$backup_file${need_merge:+:$bigbox_file}" kubectl config view --merge --flatten > "$unified_file"
+
+    # Symlink sur config.yaml, comme çà c'est propre et portable 👍
+    ln -sf "$unified_file" "$standard_file"
 
 }

@@ -9,19 +9,18 @@ IFS=$'\n\t'
 # Demander l'élévation des privilèges dès le début
 sudo -v
 
+# Bonne pratique, pour définir le répertoire du script
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
 # Variables globales
-BB_CFG_DIR="$HOME/.config/bigbox"
-BB_CFG_FILE_ALIAS="alias"
-BB_CFG_FILE_AUTOCOMPLETION="autocompletion"
 DEBUG=false
 SHOW_VERSION=false
 SHOW_BANNER=true
 SHOW_EASTER_EGGS=false
 
-# Bonne pratique, pour définir le répertoire du script
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-
 # Importer les librairies
+source "$SCRIPT_DIR/lib/constant.sh"
+source "$SCRIPT_DIR/lib/dotfile.sh"
 source "$SCRIPT_DIR/lib/log.sh"
 source "$SCRIPT_DIR/lib/util.sh"
 source "$SCRIPT_DIR/lib/system.sh"
