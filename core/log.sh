@@ -57,17 +57,17 @@ show_easter_eggs() {
         🐒  Julien FERREIRA DA COSTA
 
     🔬  Testeurs :
-        🐴  Anne-Sophie KRAWSJ... Anne-So quoi !
-        💪  Baptiste    BEAUVAIS
+        🐴  Anne-Sophie
+        💪  Baptiste
         🔨  Guillaume   
         💎  Iwan        
-        💣  Kévin       NAU
+        💣  Kévin
         🏸  Stéphane    
-        🍅  Valérian    DELEEUW
+        🍅  Valérian
     
     🎤  Cassedédi :
-        🥃  Benjamin    PERTUISEL
-        🌸  François    BELLEC
+        🥃  Benjamin
+        🌸  François
         🌿  Tous mes gars sûrs du 93/94, les "maraîchers" et les "vendeurs sur les marchés" !
 
     ❤️  Merci, c'est grâce à vous que je n'ai pas encore sauté par la Sainte-Fenêtre ! 🪟
@@ -81,8 +81,9 @@ EOF
 log_action_start() {
     local module="$1"
     local action="$2"
+    local max_length="${3:-10}"
 
-    echo -ne "\r\t⏳ [$module]\t$action"
+    printf "\r\t⏳ [%-*s]\t%s" "$max_length" "$module" "$action"
 }
 
 # Affichage d'un message de fin d'action d'un module avec réaction au mod DEBUG
@@ -94,21 +95,22 @@ log_action_start() {
 log_action_end() {
     local module="$1"
     local action="$2"
-    local status="${3:-0}"
-    local std_out="${4:-}"
-    local std_err="${5:-}"
+    local max_length="${3:-10}"
+    local status="${4:-0}"
+    local std_out="${5:-}"
+    local std_err="${6:-}"
 
     if (( "$status" == 0 )); then
-        echo -e "\r\t✅ [$module]\t$action"
+        printf "\r\t✅ [%-*s]\t%s\n" "$max_length" "$module" "$action"
         if [[ "$DEBUG" == "true" ]]; then
-            printf '%s\n' "$std_out"
+            printf "%s" "$std_out"
         fi
     else
-        echo -e "\r\t❌ [$module]\t$action"
+        printf "\r\t❌ [%-*s]\t%s\n" "$max_length" "$module" "$action"
         if [[ "$DEBUG" == "true" ]]; then
-            printf '%s\n' "$std_out"
+            printf "%s" "$std_out"
         fi
-        printf '%s\n' "$std_err"
+        printf "%s" "$std_err"
     fi
 }
 
@@ -116,6 +118,10 @@ log_action_end() {
 # $1 module     : Le nom du module
 # $2 action     : L'action lancée sur ce module
 log_action_not_implemented() {
+    local module="$1"
+    local action="$2"
+    local max_length="${3:-10}"
 
-    echo -e "\r\t❔ [$module]\t$action"
+    printf "\r\t❔ [%-*s]\t%s\n" "$max_length" "$module" "$action"
+    
 }
