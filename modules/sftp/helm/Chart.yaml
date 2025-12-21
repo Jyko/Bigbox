@@ -1,0 +1,6 @@
+apiVersion: v2
+name: bigbox-sftp
+description: "Un serveur Atmoz/SFTP pour la BigBox"
+type: application
+version: 1.0.0
+appVersion: "latest"

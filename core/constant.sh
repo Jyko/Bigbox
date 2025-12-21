@@ -19,3 +19,6 @@ BB_CFG_MAIN_DOTFILE="$BB_CFG_DIR/bigbox.sh"
 BB_K8S_CONFIG_DIR=$HOME/.kube
 BB_K8S_CONTEXT=bigbox
 BB_K8S_NAMESPACE=bigbox
+
+# SSH
+BB_SSH_DIR=$HOME/.ssh/bigbox

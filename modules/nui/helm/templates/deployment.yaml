@@ -16,7 +16,7 @@ spec:
         {{- include "bigbox-nui.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-        - name: nats
+        - name: nui
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:

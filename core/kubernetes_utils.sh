@@ -55,13 +55,19 @@ kutils_helm_wrapper() {
 kutils_release_upgrade() {
     local release_name="$1"
     local helm_dir="$2"
+    shift 2
 
     if [[ -z "$release_name" || -z "$helm_dir" ]]; then
         echo "Le nom de la release et son répertoire ne peuvent être null" >&2
         return 1
     fi
 
-    kutils_helm_wrapper upgrade --install "$release_name" "$helm_dir" -f "$helm_dir/values.yaml" --namespace "$BB_K8S_NAMESPACE"
+    kutils_helm_wrapper upgrade --install \
+        "$release_name" \
+        "$helm_dir" \
+        -f "$helm_dir/values.yaml" \
+        --namespace "$BB_K8S_NAMESPACE" \
+        "$@"
 
     return 0
 }

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bigbox-sftp.fullname" . }}
+  labels:
+    {{- include "bigbox-sftp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: eventbus
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "bigbox-sftp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "bigbox-sftp.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+        - name: sftp-init
+          image: alpine
+          command: ["sh", "-c", "chown -R 1001:1001 /home/{{ .Values.sftp.user }}"]
+          volumeMounts:
+            - name: sftp-data
+              mountPath: /home/{{ .Values.sftp.user }}
+      containers:
+        - name: sftp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          args: ["{{ .Values.sftp.user }}::1001"]
+          ports:
+            - name: client
+              containerPort: 22
+          volumeMounts:
+            - name: sftp-data
+              mountPath: /home/{{ .Values.sftp.user }}/{{ .Values.sftp.directory }}
+              readOnly: false
+            - name: sftp-secret
+              mountPath: /home/{{ .Values.sftp.user }}/.ssh/keys/{{ .Values.sftp.user }}.pub
+              subPath: clientPublicKey
+              readOnly: true
+      volumes:
+        - name: sftp-data
+          persistentVolumeClaim:
+            claimName: {{ include "bigbox-sftp.fullname" . }}-pvc
+        - name: sftp-secret
+          secret:
+            secretName: {{ include "bigbox-sftp.fullname" . }}-secret
