@@ -6,18 +6,22 @@ load_modules() {
     # Charger tous les modules
     for module in "$BB_MOD_DIR"/*/*.sh; do
 
-        echo -ne "\r\t⏳ Chargement du module $module"
+        if [[ "$DEBUG" == "true" ]]; then 
+            echo -ne "\r\t⏳ Chargement du module $module" >&1
+        fi
 
         source "$module"
 
         if [[ -z "$MODULE_NAME" || -z "$MODULE_PRIORITY" ]]; then
-            echo -e "\r\t❌ Chargement échoué du module $module"
+            echo -e "\r\t❌ Chargement échoué du module $module" >&2
             exit 1
         fi
 
         MODULES["$MODULE_PRIORITY"]="$MODULE_NAME"
 
-        echo -e "\r\t✅ Chargement réussi du module $module"
+        if [[ "$DEBUG" == "true" ]]; then 
+            echo -e "\r\t✅ Chargement réussi du module $module" >&1
+        fi
 
         sleep 0.1
 
