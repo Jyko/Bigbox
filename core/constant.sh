@@ -1,6 +1,8 @@
 BB_ALLOWED_ACTIONS=(
   help
   install
+  start
+  stop
   uninstall
   upgrade
   version

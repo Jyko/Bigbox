@@ -92,22 +92,6 @@ snap_wrapper() {
     
 }
 
-# Décorateur pour kubectl afin de toujour s'assurer que les commandes sont jouées dans le bon contexte (pas la PRD :D)
-kubectl_wrapper() {
-
-    kubectx "$BB_K8S_CONTEXT"
-    kubectl "$@"
-
-}
-
-# Décorateur pour helm afin de toujours s'assurer que les commandes sont jouées dans le bon contexte (toujours pas la PRD :D)
-helm_wrapper() {
-
-    kubectx "$BB_K8S_CONTEXT"
-    helm "$@"
-
-}
-
 # Retourne la nouvelle valeur d'une variable d'env après la concaténation de cette valeur
 # avec les anciennes connues. Ne modifie pas cette variable d'env.
 #

@@ -15,16 +15,9 @@ BB_BASIC_PACKAGES=(
 )
 
 basic_install() {
-
     apt_wrapper install -y ${PACKAGES[@]}
-
 }
 
-# Les basiques ne seront pas désinstallés
-# basic_uninstall() { }
-
 basic_upgrade() {
-
     apt_wrapper update -y && apt_wrapper install -y --only-upgrade "${PACKAGES[@]}"
-
 }

@@ -45,7 +45,7 @@ execute_action() {
             execute_version
             exit 0
             ;;
-        install|uninstall|upgrade)
+        install|uninstall|upgrade|start|stop)
             execute_others
             exit 0
             ;;
@@ -73,6 +73,9 @@ execute_help() {
         install                 Installer la BigBox
         uninstall               Désinstaller la BigBox
         upgrade                 Mettre à jour la BigBox
+        
+        start                   Démarrer les outils et déploiements de la BigBox
+        stop                    Eteindre les outils et déploiements de la Bigbox
 
     Options:
         -d, --debug             Activer le mode debug

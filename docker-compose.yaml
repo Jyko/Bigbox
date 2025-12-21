@@ -1,42 +1,4 @@
 services:
-
-  postgres:
-    image: postgres:17-alpine
-    container_name: pg
-    profiles: ['pg']
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-bigard}
-      POSTGRES_USER: ${POSTGRES_USER:-bigard}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bigard}
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-
-  nats:
-    image: nats:latest
-    container_name: nats
-    profiles: ['nats']
-    networks:
-      - nats_network
-    volumes:
-      - nats_data:/data
-    ports:
-      - "${NATS_PORT:-4222}:4222"
-      - "${NATS_MONITORING_PORT:-8222}:8222"
-    depends_on:
-      - nui
-
-  nui:
-    image: ghcr.io/nats-nui/nui:latest
-    container_name: nui
-    profiles: ['nats']
-    networks:
-      - nats_network
-    volumes:
-      - nui_data:/db
-    ports:
-      - "${NUI_PORT:-31311}:31311"
   
   # Pour donner les permissions à l'utilisateur Bigard sur le volume SFTP sans avoir à le faire manuellement.
   sftp-init:
@@ -58,13 +20,3 @@ services:
     command: ${SFTP_USER:-bigard}::1001
     depends_on:
       - sftp-init
-
-volumes:
-  pg_data:
-  nats_data:
-  nui_data:
-  sftp_data:
-
-networks:
-  nats_network:
-    driver: bridge

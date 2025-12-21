@@ -24,7 +24,5 @@ docker_uninstall() {
 }
 
 docker_upgrade() {
-
     snap_wrapper refresh docker
-    
 }

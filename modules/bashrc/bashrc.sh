@@ -8,7 +8,6 @@ bashrc_install() {
     source_file "$BB_CFG_MAIN_DOTFILE" "$HOME/.bashrc"
 
     source "$HOME/.bashrc"
-
 }
 
 #  TODO: Supprimer le source dans le .bashrc du $USER
@@ -18,8 +17,4 @@ bashrc_uninstall() {
     unsource_file "$BB_CFG_MAIN_DOTFILE" "$HOME/.bashrc"
 
     source "$HOME/.bashrc"
-
 }
-
-# Pas besoin normalement
-# bashrc_upgrade() { }

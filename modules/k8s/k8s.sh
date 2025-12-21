@@ -5,6 +5,7 @@ MODULE_PRIORITY=200
 BB_K8S_MODULE_NAME="k8s"
 BB_K8S_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_K8S_MODULE_DOTFILES_DIR="$BB_K8S_MODULE_BASE_DIR/dotfiles"
+BB_K8S_MICROK8S_TIMEOUT=30
 
 # Installer microk8s et kubectx
 k8s_install() {
@@ -88,12 +89,15 @@ k8s_install() {
     # CONFIGURATION du noeud Kubernetes #
     #####################################
 
-    # Activer la persitance sur le FS du Host pour que des volumes persistants puissent être créer
-    sudo microk8s enable hostpath-storage
+    # Activer :
+    #   - La persitance sur le FS du Host pour que des volumes persistants puissent être créer
+    #   - Le service de métrologie (Prometheus)
+    sudo microk8s enable hostpath-storage metrics-server
 
-    # Créer le namespace si celui-ci n'existe pas afin d'éviter les conflits et petit accident (coucou la PRD :D)
-    kubectl_wrapper get namespace "$BB_K8S_NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "$BB_K8S_NAMESPACE"
-
+    # Créer le namespace si celui-ci n'existe pas afin d'éviter les conflits et petit accident (coucou la PRD :D),
+    # puis switch dedans (même si le wrapper forcera l'utilisation de ce dernier partout)
+    kutils_kubectl_wrapper get namespace "$BB_K8S_NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "$BB_K8S_NAMESPACE"
+    kutils_verify_kube_context
 }
 
 # TODO, y a du taff'
@@ -101,3 +105,31 @@ k8s_install() {
 
 # A refléchir
 # k8s_upgrade() { return 0 }
+
+k8s_start() {
+
+    k8s_verify_microk8s_install
+
+    microk8s start >/dev/null 2>&1 || true
+
+    # Attendre que microk8s soit prêt avec timeout 30s
+    if ! timeout "$BB_K8S_MICROK8S_TIMEOUT" microk8s status --wait-ready >/dev/null 2>&1; then
+        echo -e "\r\t🕙 microk8s n'est pas prêt après ${BB_K8S_MICROK8S_TIMEOUT}s 💥 Vérifiez les logs avec 'sudo microk8s inspect' 🤓"
+        return 2
+    fi
+}
+
+k8s_stop() {
+
+    k8s_verify_microk8s_install
+    
+    microk8s stop >/dev/null 2>&1 || true
+}
+
+k8s_verify_microk8s_install() {
+
+    if ! command -v microk8s >/dev/null 2>&1; then
+        echo -e "\r\t🧐 microk8s n'est pas installé"
+        return 1
+    fi
+}

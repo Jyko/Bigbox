@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bigbox-nui.fullname" . }}
+  labels:
+    {{- include "bigbox-nui.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web-ui
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "bigbox-nui.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "bigbox-nui.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: nats
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          ports:
+            - name: client
+              containerPort: 31311
+          livenessProbe:
+            httpGet:
+              path: /
+              port: client
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - name: nui-data
+              mountPath: /db
+      volumes:
+        - name: nui-data
+          persistentVolumeClaim:
+            claimName: {{ include "bigbox-nui.fullname" . }}-pvc

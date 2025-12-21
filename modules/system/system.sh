@@ -30,11 +30,4 @@ EOF
     fi
 
     return 0
-
 }
-
-# Pas de désinstallation système
-# system_uninstall() { }
-
-# TODO : Je propose un do-upgrade-version ? C'est tendax quand même, bcp de bordel à gérer.
-# system_upgrade() { }
