@@ -27,7 +27,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: client
+              port: 31311
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 2
@@ -35,7 +35,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /
-              port: http
+              port: 31311
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 2

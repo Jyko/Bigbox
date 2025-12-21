@@ -8,21 +8,21 @@ BB_NATS_HELM_CHART_NAME=bigbox-nats
 BB_NATS_HELM_RELEASE_NAME=bigbox-nats
 
 nats_install() {
-    kutils_release_upgrade "$BB_NATS_MODULE_HELM_DIR" "$BB_NATS_HELM_RELEASE_NAME"
+    kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
 }
 
 nats_uninstall() { 
-    kutils_release_uninstall "$BB_NATS_HELM_CHART_NAME" "$BB_NATS_HELM_RELEASE_NAME"
+    kutils_release_uninstall "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_HELM_CHART_NAME"
 }
 
 nats_upgrade() {
-    kutils_release_upgrade "$BB_NATS_MODULE_HELM_DIR" "$BB_NATS_HELM_RELEASE_NAME"
+    kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
 }
 
 nats_start() {
-    kutils_release_upgrade "$BB_NATS_MODULE_HELM_DIR" "$BB_NATS_HELM_RELEASE_NAME"
+    kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
 }
 
 nats_stop() {
-    kutils_release_stop "$BB_NATS_MODULE_HELM_DIR" "$BB_NATS_HELM_CHART_NAME" "$BB_NATS_HELM_RELEASE_NAME"
+    kutils_release_stop "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_HELM_CHART_NAME" "$BB_NATS_MODULE_HELM_DIR"
 }
