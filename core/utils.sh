@@ -1,3 +1,32 @@
+###################################
+# Utilitaires communs génériques #
+###################################
+
+# Wrapper universel de commandes
+# Contrôle les flux stdin/stdout/stderr des commandes executés.
+# $@        : La commande à executer
+run_cmd() {
+
+    # En débug nous ne contrôlons pas stdout ou stderr et laissons le comportement par défaut.
+    if log_is_at_least "$LOG_DEBUG"; then
+        "$@"
+    else
+        # En info et silent nous capturons stdout et stderr pour éviter de log toutes les commandes
+        local output
+        output="$("$@" 2>&1)"
+        local status=$?
+        
+        # En cas d'erreur, nous loggons stderr
+        if (( status != 0 )); then
+            log_error "🧨 code:${status:-1} '$@'"
+            # Réinjection du stderr sans modifier son format pour une meilleure compréhension des erreurs
+            printf "%s\n" "$output" >&2
+        fi
+
+        return $status
+    fi
+}
+
 parse_args() {
 
     for arg in "$@"; do
@@ -50,46 +79,7 @@ verify_action() {
 # Décorateur pour apt-get afin que celui-ci passe en mode non-interractif complet et
 # ne redirige aucun flux vers /dev/tty, bloquant ainsi les scripts.
 apt_wrapper() {
-    sudo env DEBIAN_FRONTEND=noninteractive apt-get "$@"
-}
-
-# Décorateur pour snapd afin de gérer les installations déjà existantes
-# $1 cmd : La commande Snapd à exécuter
-# $2 snap : Le package Snap contre lequel jouer la commande Snapd
-# $3 flags... : Les flags supplémentaires (optionnal)
-snap_wrapper() {
-    local cmd="$1"
-    local snap="$2"
-    local flags="${3:-}"
-
-    case "$cmd" in
-        install|refresh|remove)
-            ;;
-        *)
-            echo "Commande non supportée: $cmd" >&2
-            return 1
-            ;;
-    esac
-
-    local installed=$(snap list "$snap" >/dev/null 2>&1 && echo 1 || echo 0 )
-
-    # Vérifier si le snap est déjà installé
-    if [[ "$cmd" == "install" ]] && (( installed )); then
-        return 0
-    fi
-
-    # Installer le snap si il ne l'est pas lors d'une tentative de refresh
-    if [[ "$cmd" == "refresh" ]] && (( ! $installed )); then
-        cmd="install"
-    fi
-
-    # Ne rien faire si le snap est déjà désintallé
-    if [[ "$cmd" == "remove" ]] && (( ! $installed )); then
-        return 0
-    fi
-
-    sudo snap $cmd $snap $flags
-    
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get -y "$@"
 }
 
 # Retourne la nouvelle valeur d'une variable d'env après la concaténation de cette valeur
@@ -240,4 +230,40 @@ install_dotfile() {
 
     source_file "$dst_dir/$dotfile" "$BB_CFG_MAIN_DOTFILE"
 
+}
+
+# Ajouter à ce texte à ce fichier en utilisant le wrapper de commande
+#
+# $1        : Le chemin du fichier dans lequel ajouter ce contenu
+# $...      : Le contenu à ajouter
+file_append() {
+    local file="$1"
+    shift
+
+    local tmpfile=$(mktemp)
+
+    cat > "$tmpfile" "$@"
+
+    run_cmd sudo tee -a "$file" >/dev/null < "$tmpfile"
+
+    # Nettoyage du fichier temporaire
+    rm "$tmpfile"
+}
+
+# Remplacer ce fichier par ce contenu en utilisant le wrapper de commande
+#
+# $1        : Le chemin du fichier dans lequel ajouter ce contenu
+# $...      : Le contenu à ajouter
+file_replace() {
+    local file="$1"
+    shift
+
+    local tmpfile=$(mktemp)
+
+    cat > "$tmpfile" "$@"
+
+    run_cmd sudo tee -a "$file" >/dev/null < "$tmpfile"
+
+    # Nettoyage du fichier temporaire
+    rm "$tmpfile"
 }

@@ -1,3 +1,60 @@
+# =============================================
+# Utilitaires communs pour la gestion des LOGS
+# =============================================
+
+# ====================
+# Définition des niveaux de logs
+# ====================
+readonly LOG_DEBUG=0
+readonly LOG_INFO=1
+readonly LOG_SILENT=2
+
+# Niveau de log courant
+LOG_LEVEL=$LOG_INFO
+
+# ====================
+# Gestion du niveau de logs
+# ====================
+log_set_silent() { LOG_LEVEL=$LOG_SILENT ; }
+log_set_info() { LOG_LEVEL=$LOG_INFO ; }
+log_set_debug() { LOG_LEVEL=$LOG_DEBUG ; }
+
+# ====================
+# Fonctions
+# ====================
+
+# Retourner 0 si ce niveau de log est au moins égal au niveau de log courant de l'application.
+# Evite la répétition de l'algo partout dans les utilitaires et l'application.
+# $1        : Le niveau à tester contre le niveau de log courant
+log_is_at_least() { (($LOG_LEVEL <= $1)) ; }
+
+# Afficher un message de log d'une certaine typologie.
+# Chaque à son niveau de déclenchement et son format propre.
+# DEBUG     : Gris      uniquement en niveau DEBUG
+# INFO      : Blanc     toujours sauf en SILENT
+# SUCCESS   : Vert      toujours sauf en SILENT
+# WARN      : Jaune     toujours sauf en SILENT
+# ERROR     : Rouge     toujours y compris en SILENT
+log_debug() {
+    log_is_at_least $LOG_DEBUG && printf "\033[90m%b\033[0m\n" "$*" || true
+}
+
+log_info() {
+    log_is_at_least $LOG_INFO && printf "%b\n" "$*" || true
+}
+
+log_success() {
+    log_is_at_least $LOG_INFO && printf "\033[32m%b\033[0m\n" "$*" || true
+}
+
+log_warn() {
+    log_is_at_least $LOG_INFO && printf "\033[33m%b\033[0m\n" "$*" || true
+}
+
+log_error() {
+    printf "\033[31m%b\033[0m\n" "$*" >&2
+}
+
 show_infos() {
 
     if [[ "$SHOW_BANNER" == "true" ]]; then
@@ -74,54 +131,4 @@ show_easter_eggs() {
     
 EOF
 
-}
-
-# Affichage d'un message de début d'action d'un module
-# $1 : message
-log_action_start() {
-    local module="$1"
-    local action="$2"
-    local max_length="${3:-10}"
-
-    printf "\r\t⏳ [%-*s]\t%s" "$max_length" "$module" "$action"
-}
-
-# Affichage d'un message de fin d'action d'un module avec réaction au mod DEBUG
-# $1 module     : Le nom du module
-# $2 action     : L'action lancée sur ce module
-# $3 status     : Le status d'exécution de cette action (0=success, autre=erreur, optionnel, défaut 0)
-# $4 : stdout de la commande lancée (optionnel)
-# $5 : stderr de la commande lancée (optionnel)
-log_action_end() {
-    local module="$1"
-    local action="$2"
-    local max_length="${3:-10}"
-    local status="${4:-0}"
-    local std_out="${5:-}"
-    local std_err="${6:-}"
-
-    if (( "$status" == 0 )); then
-        printf "\r\t✅ [%-*s]\t%s\n" "$max_length" "$module" "$action"
-        if [[ "$DEBUG" == "true" ]]; then
-            printf "%s" "$std_out"
-        fi
-    else
-        printf "\r\t❌ [%-*s]\t%s\n" "$max_length" "$module" "$action"
-        if [[ "$DEBUG" == "true" ]]; then
-            printf "%s" "$std_out"
-        fi
-        printf "%s" "$std_err"
-    fi
-}
-
-# Affichage d'un message pour un module ne disposant pas d'implémentation pour l'action lancée
-# $1 module     : Le nom du module
-# $2 action     : L'action lancée sur ce module
-log_action_not_implemented() {
-    local module="$1"
-    local action="$2"
-    local max_length="${3:-10}"
-
-    printf "\r\t❔ [%-*s]\t%s\n" "$max_length" "$module" "$action"
-    
 }
