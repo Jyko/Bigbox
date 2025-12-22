@@ -10,7 +10,7 @@ readonly LOG_INFO=1
 readonly LOG_SILENT=2
 
 # Niveau de log courant
-LOG_LEVEL=$LOG_INFO
+LOG_LEVEL="$LOG_DEBUG"
 
 # ====================
 # Gestion du niveau de logs
@@ -28,6 +28,38 @@ log_set_debug() { LOG_LEVEL=$LOG_DEBUG ; }
 # $1        : Le niveau à tester contre le niveau de log courant
 log_is_at_least() { (($LOG_LEVEL <= $1)) ; }
 
+log_msg() {
+    local color=""
+    local level="$LOG_INFO"
+
+    # Options
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -c) color="$2" ; shift 2 ;;
+            -l) level="$2" ; shift 2 ;;
+            --) shift; break ;;  # fin des options
+            *) break ;;
+        esac
+    done
+
+    # Le message correspond à tout ce qui n'a pas été parser
+    local msg="$*"
+
+    # Vérifier que le niveau de log courant permet la publication du message
+    log_is_at_least "$level" || return 0
+
+    # Applique la couleur
+    local prefix=""
+    local suffix=""
+    if [[ -n "$color" ]]; then
+        prefix="\033[${color}m"
+        suffix="\033[0m"
+    fi
+
+    printf "%b%b%b" "$prefix" "$msg" "$suffix"
+
+}
+
 # Afficher un message de log d'une certaine typologie.
 # Chaque à son niveau de déclenchement et son format propre.
 # DEBUG     : Gris      uniquement en niveau DEBUG
@@ -35,25 +67,11 @@ log_is_at_least() { (($LOG_LEVEL <= $1)) ; }
 # SUCCESS   : Vert      toujours sauf en SILENT
 # WARN      : Jaune     toujours sauf en SILENT
 # ERROR     : Rouge     toujours y compris en SILENT
-log_debug() {
-    log_is_at_least $LOG_DEBUG && printf "\033[90m%b\033[0m\n" "$*" || true
-}
-
-log_info() {
-    log_is_at_least $LOG_INFO && printf "%b\n" "$*" || true
-}
-
-log_success() {
-    log_is_at_least $LOG_INFO && printf "\033[32m%b\033[0m\n" "$*" || true
-}
-
-log_warn() {
-    log_is_at_least $LOG_INFO && printf "\033[33m%b\033[0m\n" "$*" || true
-}
-
-log_error() {
-    printf "\033[31m%b\033[0m\n" "$*" >&2
-}
+log_debug() { log_msg -c "90" -l "$LOG_DEBUG" "$@" ; }
+log_info() { log_msg "$@" ; }
+log_success() { log_msg -c "32" "$@" ; }
+log_warn() { log_msg -c "33" -l "$@" ; }
+log_error() { log_msg -c "31" -l "$SILENT" "$@" >&2 ; }
 
 show_infos() {
 

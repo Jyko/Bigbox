@@ -11,13 +11,13 @@ load_modules() {
         source "$module"
 
         if [[ -z "$MODULE_NAME" || -z "$MODULE_PRIORITY" ]]; then
-            log_error "\r\t❌ Chargement échoué du module $module"
+            log_error "\r\t❌ Chargement échoué du module $module\n"
             exit 1
         fi
 
         MODULES["$MODULE_PRIORITY"]="$MODULE_NAME"
 
-        log_debug "\r\t✅ Chargement réussi du module $module"
+        log_debug "\r\t✅ Chargement réussi du module $module\n"
 
         unset MODULE_NAME MODULE_PRIORITY
 
@@ -36,7 +36,7 @@ run_modules() {
 
         # Si le module ne dispose pas de l'action nous écrivons un message de skip
         if ! declare -f "$func" >/dev/null; then
-            log_warn "\r\t❔ [$module] $action "
+            log_warn "\r\t❔ [$module] $action\n"
             continue
         fi
 
@@ -45,9 +45,9 @@ run_modules() {
         local status=$?
         
         if (( status ==  0 )); then
-            log_success "\r\t✅ [$module] $action"
+            log_success "\r\t✅ [$module] $action\n"
         else
-            log_error "\r\t❌ [$module] $action"
+            log_error "\r\t❌ [$module] $action\n"
             exit "$status"
         fi
 

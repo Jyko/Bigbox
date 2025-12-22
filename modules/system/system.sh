@@ -25,12 +25,12 @@ system_verify() {
 
     👍 Après la mise à jour, relancez ce script d'installation
 EOF
-)"
+)\n"
 
         return 1
 
     else
-        log_debug "La version actuelle d'Ubuntu $ubuntu_major_version est supérieure à celle nécessaire $BB_SYSTEM_UBUNTU_MIN_VERSION"
+        log_debug "La version actuelle d'Ubuntu $ubuntu_major_version est supérieure à celle nécessaire $BB_SYSTEM_UBUNTU_MIN_VERSION\n"
     fi
 
 }
@@ -53,10 +53,10 @@ system_install() {
 systemd=true
 EOF
 
-        log_success "Systemd est activé"
-        log_warn "Redémarrage WSL nécessaire en fin d'installation"
+        log_success "Systemd est activé\n"
+        log_warn "Redémarrage WSL nécessaire en fin d'installation\n"
     else
-        log_debug "Systemd est déjà activé"
+        log_debug "Systemd est déjà activé\n"
     fi
 
 }
