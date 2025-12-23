@@ -5,7 +5,6 @@ BB_ALLOWED_ACTIONS=(
   stop
   uninstall
   upgrade
-  version
 )
 
 # Répertoire des modules de la BigBox
@@ -13,7 +12,10 @@ BB_MOD_DIR="$SCRIPT_DIR/modules"
 
 # Répertoire d'installation de la configuration de la BigBox
 BB_CFG_DIR="$HOME/.config/bigbox"
-BB_CFG_MAIN_DOTFILE="$BB_CFG_DIR/bigbox.sh"
+BB_CFG_MAIN_FILE="$BB_CFG_DIR/bigbox.sh"
+BB_CFG_ENV_FILE="$BB_CFG_DIR/env.sh"
+BB_CFG_ALIAS_FILE="$BB_CFG_DIR/alias.sh"
+BB_CFG_COMPLETION_FILE="$BB_CFG_DIR/completion.sh"
 
 # KUBERNETES
 BB_K8S_CONFIG_DIR=$HOME/.kube

@@ -27,35 +27,6 @@ run_cmd() {
     fi
 }
 
-parse_args() {
-
-    for arg in "$@"; do
-        if is_valid_action "$arg"; then
-
-            verify_action
-            ACTION="$arg"
-            ACTION_SET=true
-
-        else
-            case "$arg" in
-                -d|--debug)
-                    DEBUG=true
-                    ;;
-                --nb|--no-banner)
-                    SHOW_BANNER=false
-                    ;;
-                --ee|--easter-eggs)
-                    SHOW_EASTER_EGGS=true
-                    ;;
-                *)
-                    echo "Argument non supporté : $arg"
-                    exit 1
-                    ;;
-            esac
-        fi
-    done
-}
-
 is_valid_action() {
     local action="$1"
 
@@ -79,7 +50,13 @@ verify_action() {
 # Décorateur pour apt-get afin que celui-ci passe en mode non-interractif complet et
 # ne redirige aucun flux vers /dev/tty, bloquant ainsi les scripts.
 apt_wrapper() {
-    sudo env DEBIAN_FRONTEND=noninteractive apt-get -y "$@"
+    if log_is_at_least "$LOG_DEBUG"; then
+        # Comportement normal
+        sudo apt-get -y "$@"
+    else 
+        # Mode silencieux complet
+        sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq "$@" </dev/null
+    fi
 }
 
 # Retourne la nouvelle valeur d'une variable d'env après la concaténation de cette valeur
@@ -102,7 +79,7 @@ append_value_to_var() {
     local value="$2"
     local separator="${3:-:}"
 
-    local current_value="${!var}"
+local current_value="${!var}"
     local result
 
     case "$separator$current_value$separator" in
@@ -118,7 +95,7 @@ append_value_to_var() {
             ;;
     esac
 
-    echo "$result";
+    printf "%s" "$result";
 
 }
 

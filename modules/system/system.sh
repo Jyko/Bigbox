@@ -15,22 +15,23 @@ system_verify() {
     # Vérification de la version Ubuntu
     if (( ubuntu_major_version < BB_SYSTEM_UBUNTU_MIN_VERSION )); then
 
-        log_error "$(cat <<-EOF
-    ❌ Une version majeure d'Ubuntu $BB_SYSTEM_UBUNTU_MIN_VERSION+ est requise
+        log_error "
+        ❌ Une version majeure d'Ubuntu $BB_SYSTEM_UBUNTU_MIN_VERSION+ est requise
 
-    ℹ️ La version majeure actuelle est $ubuntu_major_version
+        ℹ️ La version majeure actuelle est $ubuntu_major_version
         
-    🔄 Mettez à jour la version de la distribution Ubuntu
-    sudo do-release-upgrade
+        🔄 Mettez à jour la version de la distribution Ubuntu
+        \tsudo do-release-upgrade
 
-    👍 Après la mise à jour, relancez ce script d'installation
-EOF
-)\n"
+        👍 Après la mise à jour, relancez ce script d'installation
+        "
 
         return 1
 
     else
-        log_debug "La version actuelle d'Ubuntu $ubuntu_major_version est supérieure à celle nécessaire $BB_SYSTEM_UBUNTU_MIN_VERSION\n"
+        log_debug "
+        La version actuelle d'Ubuntu $ubuntu_major_version est supérieure à celle nécessaire $BB_SYSTEM_UBUNTU_MIN_VERSION
+        "
     fi
 
 }
@@ -53,10 +54,16 @@ system_install() {
 systemd=true
 EOF
 
-        log_success "Systemd est activé\n"
-        log_warn "Redémarrage WSL nécessaire en fin d'installation\n"
+        log_success "
+        Systemd est activé
+        "
+        log_warn "
+        Redémarrage WSL nécessaire en fin d'installation
+        "
     else
-        log_debug "Systemd est déjà activé\n"
+        log_debug "
+        Systemd est déjà activé
+        "
     fi
 
 }

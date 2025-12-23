@@ -21,12 +21,14 @@ BB_BASIC_PACKAGES=(
 
 basic_install() {
 
-    apt_wrapper install -y ${PACKAGES[@]}
+    apt_wrapper install ${PACKAGES[@]}
+
+    cfg_add_var "PATH" "$HOME/go/bin"
 
     install_dotfile "basic_export.sh" "$BB_BASIC_MODULE_NAME" "$BB_BASIC_MODULE_DOTFILES_DIR"
     
 }
 
 basic_upgrade() {
-    apt_wrapper update -y && apt_wrapper install -y --only-upgrade "${PACKAGES[@]}"
+    apt_wrapper update && apt_wrapper install --only-upgrade "${PACKAGES[@]}"
 }
