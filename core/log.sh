@@ -61,7 +61,7 @@ log_msg() {
         suffix="\033[0m"
     fi
 
-    printf "%b%b%b" "$prefix" "$msg" "$suffix"
+    printf "%b%b%b" "$prefix" "$msg" "$suffix" >&2
 
 }
 
@@ -76,4 +76,4 @@ log_debug() { log_msg -c "90" -l "$LOG_DEBUG" "$@" ; }
 log_info() { log_msg "$@" ; }
 log_success() { log_msg -c "32" "$@" ; }
 log_warn() { log_msg -c "33" "$@" ; }
-log_error() { log_msg -c "31" -l "$LOG_SILENT" "$@" >&2 ; }
+log_error() { log_msg -c "31" -l "$LOG_SILENT" "$@" ; }

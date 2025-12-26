@@ -1,34 +1,49 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
 # METADATA du module
 MODULE_NAME="basic"
 MODULE_PRIORITY=0
 
-BB_BASIC_MODULE_NAME="basic"
-BB_BASIC_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BB_BASIC_MODULE_DOTFILES_DIR="$BB_BASIC_MODULE_BASE_DIR/dotfiles"
+BB_BASIC_GO_PATH="$HOME/go/bin"
 
 # Liste des packages considérés comme suffisament basiques pour ne jamais être désinstallés
 BB_BASIC_PACKAGES=(
-    apt-transport-https
-    bash-completion
-    curl
-    ca-certificates
-    git
+    shellcheck
     golang-go
-    jq
-    unzip
-    wget
 )
+
+__basic_go_configuration() {
+    # S'assurer de la présence de l'entrée dans le PATH1
+    # L'export permet de rendre Go et ses binaires disponibles aux modules suivants
+    cfg_modify_env -k="PATH" -v="PATH" -a
+    cfg_modify_env -k="PATH" -v="$BB_BASIC_GO_PATH" -a
+    export PATH="$PATH:$BB_BASIC_GO_PATH"
+}
+
+__basic_go_unconfiguration() {
+    # Supprimer l'entrée dans le PATH
+    cfg_modify_env -k="PATH" -v="PATH" -d
+    cfg_modify_env -k="PATH" -v="$BB_BASIC_GO_PATH" -d
+}
 
 basic_install() {
 
-    apt_wrapper install ${PACKAGES[@]}
+    apt_wrapper install "${BB_BASIC_PACKAGES[@]}"
 
-    cfg_add_var "PATH" "$HOME/go/bin"
+    __basic_go_configuration
+}
 
-    install_dotfile "basic_export.sh" "$BB_BASIC_MODULE_NAME" "$BB_BASIC_MODULE_DOTFILES_DIR"
-    
+basic_uninstall() {
+
+    apt_wrapper remove "${BB_BASIC_PACKAGES[@]}"
+
+    __basic_go_unconfiguration
 }
 
 basic_upgrade() {
-    apt_wrapper update && apt_wrapper install --only-upgrade "${PACKAGES[@]}"
+
+    apt_wrapper update && apt_wrapper install --only-upgrade "${BB_BASIC_PACKAGES[@]}"
+
+    __basic_go_configuration
 }

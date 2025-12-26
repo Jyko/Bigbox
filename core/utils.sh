@@ -105,13 +105,13 @@ verify_existing_dir() {
     local path="$1"
 
     if [[ -z "$path" ]]; then
-        echo "Aucun chemin fourni de répertoire fourni, impossible de vérifier son existence" >&2
-        return 1
+        log_error "Aucun chemin fourni de répertoire fourni, impossible de vérifier son existence \n"
+        return 2
     elif [[ -d "$path" ]]; then
         return 0
     else
-        echo "Le chemin $path ne pointe pas vers un dossier" >&2
-        return 1
+        log_error "Le chemin $path ne pointe pas vers un dossier \n"
+        return 2
     fi
 
 }
@@ -120,15 +120,16 @@ verify_existing_file() {
     local path="$1"
 
     if [[ -z "$path" ]]; then
-        echo "Aucun chemin fourni de fichier, impossible de vérifier son existence" >&2
-        return 1
+        log_error "Aucun chemin fourni de fichier, impossible de vérifier son existence \n"
+        return 2
     elif [[ -f "$path" ]]; then
         return 0
     else
-        echo "Le chemin $path ne pointe pas vers un fichier" >&2
-        return 1
+        log_error "Le chemin $path ne pointe pas vers un fichier \n"
+        return 2
     fi
 }
+
 
 # Vérifier que ce fichier existe, sinon le créer.
 # $1 file_path  : Le chemin de ce fichier
@@ -136,17 +137,34 @@ assure_existing_file() {
     local file_path="$1"
 
     if [[ -z "$file_path" ]]; then
-        echo "Aucun chemin de fichier fourni, impossible de vérifier son existence et de le créer" >&2
-        return 1
+        log_error "Aucun chemin de fichier fourni, impossible de vérifier son existence et de le créer \n"
+        return 2
     elif [[ -d "$file_path" ]]; then
-        echo "Le chemin $file_path est un répertoire et non un chemin de fichier comme attendu" >&2
-        return 1
+        log_error "Le chemin $file_path est un répertoire et non un chemin de fichier comme attendu \n"
+        return 2
     elif [[ ! -f "$file_path " ]]; then
+        mkdir -p "$(dirname -- "$file_path")"
         touch "$file_path"
     fi
 
     return 0
+}
 
+delete_empty_file() {
+    local file_path="$1"
+
+    if [[ -z "$file_path" ]]; then
+        log_error "Aucun chemin de fichier fourni, impossible de vérifier son existence et de le créer \n"
+        return 2
+    elif [[ -d "$file_path" ]]; then
+        log_error "Le chemin $file_path est un répertoire et non un chemin de fichier comme attendu \n"
+        return 2
+    elif [[ -f "$file_path " && -s "$file_path" ]]; then
+        rm -f "$file_path"
+        log_debug "Le fichier vide $file_path a été supprimé \n"
+    fi
+
+    return 0
 }
 
 # Ajouter une instruction "source" de ce fichier candidat dans ce fichier cible
