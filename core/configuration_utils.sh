@@ -6,9 +6,9 @@ _cfg_list_contains() {
 
     for arg in "$@"; do
         case "$arg" in
-            -l=*) list="${arg#*=}" ;;
-            -v=*) value="${arg#*=}" ;;
-            -s=*) separator="${arg#*=}" ;;
+            -l=*) list="${arg#-l=}" ;;
+            -v=*) value="${arg#-v=}" ;;
+            -s=*) separator="${arg#-s=}" ;;
             *) log_error "Argument non supporté \n" && return 2 ;;
         esac
     done
@@ -31,9 +31,9 @@ _cfg_list_append() {
 
     for arg in "$@"; do
         case "$arg" in
-            -l=*) list="${arg#*=}" ;;
-            -v=*) value="${arg#*=}" ;;
-            -s=*) separator="${arg#*=}" ;;
+            -l=*) list="${arg#-l=}" ;;
+            -v=*) value="${arg#-v=}" ;;
+            -s=*) separator="${arg#-s=}" ;;
             *) log_error "Argument non supporté \n" && return 2 ;;
         esac
     done
@@ -59,9 +59,9 @@ _cfg_list_remove() {
 
     for arg in "$@"; do
         case "$arg" in
-            -l=*) list="${arg#*=}" ;;
-            -v=*) value="${arg#*=}" ;;
-            -s=*) separator="${arg#*=}" ;;
+            -l=*) list="${arg#-l=}" ;;
+            -v=*) value="${arg#-v=}" ;;
+            -s=*) separator="${arg#-s=}" ;;
             *) log_error "Argument non supporté \n" && return 2 ;;
         esac
     done
@@ -90,8 +90,8 @@ _cfg_get_line() {
 
     for arg in "$@"; do
         case "$arg" in
-            -p=*) pattern="${arg#*=}" ;;
-            -f=*) file="${arg#*=}" ;;
+            -p=*) pattern="${arg#-p=}" ;;
+            -f=*) file="${arg#-f=}" ;;
             -s) strict=1 ;;
             *) log_error "Argument non supporté \n" && return 2 ;;
         esac
@@ -129,9 +129,9 @@ _cfg_set_line() {
 
     for arg in "$@"; do
         case "$arg" in
-            -p=*) pattern="${arg#*=}" ;;
-            -l=*) line="${arg#*=}" ;;
-            -f=*) file="${arg#*=}" ;;
+            -p=*) pattern="${arg#-p=}" ;;
+            -l=*) line="${arg#-l=}" ;;
+            -f=*) file="${arg#-f=}" ;;
             *) log_error "Argument non supporté \n" && return 2 ;;
         esac
     done
@@ -161,7 +161,7 @@ _cfg_env_get_value() {
 
     for arg in "$@"; do
         case "$arg" in
-            -k=*) key="${arg#*=}" ;;
+            -k=*) key="${arg#-k=}" ;;
             *) log_error "Argument non supporté \n" && return 2 ;;
         esac
     done
@@ -190,8 +190,8 @@ cfg_modify_env() {
 
     for arg in "$@"; do
         case "$arg" in
-            -k=*) key="${arg#*=}" ;;
-            -v=*) value="${arg#*=}" ;;
+            -k=*) key="${arg#-k=}" ;;
+            -v=*) value="${arg#-v=}" ;;
             -a) mode="a" ;;
             -r) mode="r" ;;
             -d) mode="d" ;;
@@ -231,7 +231,7 @@ cfg_modify_env() {
         _cfg_set_line -p="$pattern" -l="" -f="$BB_CFG_ENV_FILE"
         delete_empty_file "$BB_CFG_ENV_FILE"
     else
-        _cfg_set_line -p="$pattern" -l="export $key=$new_value" -f="$BB_CFG_ENV_FILE"
+        _cfg_set_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -l="export $key=$new_value"
     fi
 
     return 0

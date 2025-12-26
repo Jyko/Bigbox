@@ -156,7 +156,7 @@ show_infos() {
         show_easter_eggs
     fi
 
-    if log_is_at_least "$LOG_DEBUG"; then
+    if log_is_debug; then
         show_debug_status
     fi
 

@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
 ###################################
 # Utilitaires communs génériques #
 ###################################
@@ -8,7 +11,7 @@
 run_cmd() {
 
     # En débug nous ne contrôlons pas stdout ou stderr et laissons le comportement par défaut.
-    if log_is_at_least "$LOG_DEBUG"; then
+    if log_is_debug; then
         "$@"
     else
         # En info et silent nous capturons stdout et stderr pour éviter de log toutes les commandes
@@ -50,7 +53,7 @@ verify_action() {
 # Décorateur pour apt-get afin que celui-ci passe en mode non-interractif complet et
 # ne redirige aucun flux vers /dev/tty, bloquant ainsi les scripts.
 apt_wrapper() {
-    if log_is_at_least "$LOG_DEBUG"; then
+    if log_is_debug; then
         # Comportement normal
         sudo apt-get -y "$@"
     else 
