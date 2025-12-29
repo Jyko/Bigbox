@@ -9,7 +9,10 @@ BB_CORE_GO_PATH="$HOME/go/bin"
 
 # Liste des packages obligatoires pour le fonctionnement de la Bigbox
 BB_CORE_PACKAGES=(
+    ca-certificates
+    curl
     golang-go
+    jq
     shellcheck
 )
 
@@ -95,9 +98,10 @@ core_install() {
 
 core_uninstall() {
 
-    apt_wrapper remove "${BB_CORE_PACKAGES[@]}"
-
-    _core_go_unconfiguration
+    # Nous ne désinstallons pas les packages Cores à date
+    # On conserve Golang et sa configuration
+    # apt_wrapper remove "${BB_CORE_PACKAGES[@]}"
+    # _core_go_unconfiguration
 
     _core_bigbox_unconfiguration
 }

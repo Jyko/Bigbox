@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
 # METADATA du module
 MODULE_NAME="docker"
 MODULE_PRIORITY=100
