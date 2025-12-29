@@ -28,6 +28,7 @@ for arg in "$@"; do
     if is_valid_action "$arg"; then
 
         verify_action
+
         ACTION="$arg"
         ACTION_SET=true
 

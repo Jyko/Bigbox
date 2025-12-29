@@ -3,8 +3,10 @@
 
 BB_CORE_DIR="$SCRIPT_DIR/core"
 
+source "$BB_CORE_DIR/collection_utils.sh"
 source "$BB_CORE_DIR/constant.sh"
 source "$BB_CORE_DIR/configuration_utils.sh"
+source "$BB_CORE_DIR/fs_utils.sh"
 source "$BB_CORE_DIR/kubernetes_utils.sh"
 source "$BB_CORE_DIR/log.sh"
 source "$BB_CORE_DIR/utils.sh"

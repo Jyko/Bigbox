@@ -1,91 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
-_cfg_list_contains() {
-    local list="" value="" separator=":"
-
-    for arg in "$@"; do
-        case "$arg" in
-            -l=*) list="${arg#-l=}" ;;
-            -v=*) value="${arg#-v=}" ;;
-            -s=*) separator="${arg#-s=}" ;;
-            *) log_error "Argument non supporté \n" && return 2 ;;
-        esac
-    done
-
-    if [[ -z "$value" ]]; then 
-        log_error "Une valeur dont tester la présence est obligatoire \n"
-        return 2
-    fi
-
-    IFS="$separator" read -ra items <<< "$list"
-    for item in "${items[@]}"; do
-        [[ "$item" == "$value" ]] && return 0
-    done
-
-    return 1
-}
-
-_cfg_list_append() {
-    local list="" value="" separator=":"
-
-    for arg in "$@"; do
-        case "$arg" in
-            -l=*) list="${arg#-l=}" ;;
-            -v=*) value="${arg#-v=}" ;;
-            -s=*) separator="${arg#-s=}" ;;
-            *) log_error "Argument non supporté \n" && return 2 ;;
-        esac
-    done
-
-    if [[ -z "$value" ]]; then
-        log_error "Une valeur à ajouter est obligatoire \n"
-        return 2
-    fi
-
-    if _cfg_list_contains -l="$list" -v="$value" -s="$separator"; then
-        echo "$list"
-    elif [[ -n "$list" ]]; then
-        echo "${list}${separator}${value}"
-    else
-        echo "$value"
-    fi
-
-    return 0
-}
-
-_cfg_list_remove() {
-    local list="" value="" separator=":"
-
-    for arg in "$@"; do
-        case "$arg" in
-            -l=*) list="${arg#-l=}" ;;
-            -v=*) value="${arg#-v=}" ;;
-            -s=*) separator="${arg#-s=}" ;;
-            *) log_error "Argument non supporté \n" && return 2 ;;
-        esac
-    done
-
-    if [[ -z "$value" ]]; then
-        log_error "Une valeur à supprimer est obligatoire \n"
-        return 2
-    fi
-
-    local result="" item
-
-    IFS="$separator" read -ra items <<< "$list"
-
-    # Nous ne supprimons pas directement, nous reconstruisons une nouvelle liste sans l'éventuelle valeur à supprimer. C'est plus simple pour gérer le séparateur.
-    for item in "${items[@]}"; do
-        # L'item est la valeur que nous souhaitons supprimer, nous sautons la boucle, nous ne la concaténons pas à notre nouvelle liste.
-        [[ "$item" == "$value" ]] && continue
-        result=$(list_append -l="$result" -v="$item" -s="$separator")
-    done
-
-    echo "$result"
-}
-
-_cfg_get_line() {
+cfg_get_line() {
     local pattern="" file="" strict=0
 
     for arg in "$@"; do
@@ -122,7 +38,7 @@ _cfg_get_line() {
     return 0
 }
 
-_cfg_set_line() {
+cfg_set_line() {
     local pattern=""
     local line=""
     local file=""
@@ -166,7 +82,7 @@ _cfg_env_get_value() {
         esac
     done
 
-    assure_existing_file "$BB_CFG_ENV_FILE"
+    fs_assure_existing_file "$BB_CFG_ENV_FILE"
 
     [[ -z "$key" ]] && return 1
 
@@ -175,7 +91,7 @@ _cfg_env_get_value() {
     local line
 
     # Récupération de la ligne de configuration correspondant à l'export de la variable
-    line=$(_cfg_get_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -s) || { return $? ; }
+    line=$(cfg_get_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -s) || { return $? ; }
 
     log_debug "line=$line \n"
 
@@ -207,7 +123,7 @@ cfg_modify_env() {
         log_error "Un mode de modification est obligatoire \n" && return 2;
     fi
 
-    assure_existing_file "$BB_CFG_ENV_FILE"
+    fs_assure_existing_file "$BB_CFG_ENV_FILE"
 
     local pattern current_value new_value 
 
@@ -217,9 +133,9 @@ cfg_modify_env() {
     log_debug "\n\nvalue=$value \ncurrent_value=$current_value \n"
 
     case "$mode" in
-        a) new_value=$(_cfg_list_append -l="$current_value" -v="$value") ;;
+        a) new_value=$(list_append -l="$current_value" -v="$value") ;;
         r) new_value="$value" ;;
-        d) new_value=$(_cfg_list_remove -l="$current_value" -v="$value") ;;
+        d) new_value=$(list_remove -l="$current_value" -v="$value") ;;
         *) log_error "Erreur mode inconnu \n" && return 2 ;;
     esac
 
@@ -228,10 +144,10 @@ cfg_modify_env() {
     # Si la nouvelle valeur est blanche à la suite de l'application des modifications, nous supprimons la ligne d'instruction dans le fichier de configuration.
     # Sinon nous ajoutons la ligne avec la nouvelle valeur
     if [[ -z "$new_value" ]]; then
-        _cfg_set_line -p="$pattern" -l="" -f="$BB_CFG_ENV_FILE"
-        delete_empty_file "$BB_CFG_ENV_FILE"
+        cfg_set_line -p="$pattern" -l="" -f="$BB_CFG_ENV_FILE"
+        fs_delete_empty_file "$BB_CFG_ENV_FILE"
     else
-        _cfg_set_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -l="export $key=$new_value"
+        cfg_set_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -l="export $key=$new_value"
     fi
 
     return 0

@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
 # METADATA du module
 MODULE_NAME="system"
 MODULE_PRIORITY=-100
@@ -9,8 +12,10 @@ BB_SYSTEM_WSL_CONF_PATH="/etc/wsl.conf"
 # Vérification des basiques
 system_verify() {
 
-    local ubuntu_version=$(lsb_release -rs)
-    local ubuntu_major_version=${ubuntu_version%%.*}
+    local ubuntu_version ubuntu_major_version
+
+    ubuntu_version=$(lsb_release -rs)
+    ubuntu_major_version=${ubuntu_version%%.*}
 
     # Vérification de la version Ubuntu
     if (( ubuntu_major_version < BB_SYSTEM_UBUNTU_MIN_VERSION )); then
@@ -48,7 +53,7 @@ system_install() {
     # Vérifie si systemd est déjà activé
     if ! grep -q "systemd *= *true" "$BB_SYSTEM_WSL_CONF_PATH"; then
 
-        file_append $BB_SYSTEM_WSL_CONF_PATH <<EOF
+        fs_file_append $BB_SYSTEM_WSL_CONF_PATH <<EOF
 # Activer systemd pour certains outils de la Bigbox
 [boot]
 systemd=true
