@@ -12,6 +12,8 @@ BB_ALLOWED_ACTIONS=(
 
 # Répertoire des modules de la BigBox
 BB_MOD_DIR="$SCRIPT_DIR/modules"
+# Répertoire des ressources de la Bigbox
+BB_RSC_DIR="$SCRIPT_DIR/resources"
 
 # Répertoire d'installation de la configuration de la BigBox
 BB_CFG_DIR="$HOME/.config/bigbox"

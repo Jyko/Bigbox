@@ -38,7 +38,7 @@ apt_wrapper() {
         sudo apt-get -y "$@"
     else 
         # Mode silencieux complet
-        sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq "$@" </dev/null
+        sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq -o=Dpkg::Use-Pty=0 "$@" </dev/null >/dev/null 2>&1
     fi
 }
 

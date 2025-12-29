@@ -1,0 +1,11 @@
+{
+    "install": {
+        "order": "asc"
+    },
+    "update": {
+        "order": "asc"
+    },
+    "uninstall": {
+        "order": "desc"
+    }
+}

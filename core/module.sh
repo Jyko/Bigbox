@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
 # Liste des modules chargés ordonnée par priorité d'exécution
 declare -A MODULES
 
@@ -28,8 +31,19 @@ load_modules() {
 run_modules() {
     local action="$1"
 
-    # Pour chaque module enregistré, nous exécutons par ordre croissant de priorité l'action
-    for module_priority in $(printf "%s\n" "${!MODULES[@]}" | sort -n); do
+    # Nous récupérons la configuration de l'action dans le resources/action.json
+    local action_config_file="$BB_RSC_DIR/action.json"
+    local order_config
+    local sort_args=(-n)
+
+    order_config=$(jq -r ".\"$action\".order // \"asc\"" "$action_config_file")
+
+    if [[ "$order_config" == "desc" ]]; then
+        sort_args+=(-r)
+    fi
+
+    # Pour chaque module enregistré et trié, nous exécutons l'action
+    for module_priority in $(printf "%s\n" "${!MODULES[@]}" | sort "${sort_args[@]}"); do
 
         module="${MODULES[$module_priority]}"
         func="${module}_${action}"
