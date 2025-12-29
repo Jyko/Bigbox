@@ -23,7 +23,7 @@ docker_install() {
     sudo chmod a+r /etc/apt/keyrings/docker.asc
 
     # Add the repository to Apt sources:
-    sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+    sudo tee /etc/apt/sources.list.d/docker.sources >/dev/null <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/ubuntu
 Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
@@ -33,29 +33,29 @@ EOF
 
     # Installation des packages
     apt_wrapper update
-    apt_wrapper install ${BB_DOCKER_PACKAGES[@]}
+    apt_wrapper install "${BB_DOCKER_PACKAGES[@]}"
 
     # Ajouter l'utilisateur au groupe Docker, ne sera pris en compte qu'au prochain redémarrage du conteneur WSL2
     sudo groupadd -f docker
     sudo usermod -aG docker "$USER"
 
     # Enregistrer le service Docker et le démarrer avec le conteneur WSL2 (et tout de suite :D)
-    sudo systemctl enable --now docker.service
-    sudo systemctl enable --now containerd.service
+    run_cmd sudo systemctl enable --now docker.service
+    run_cmd sudo systemctl enable --now containerd.service
 
 }
 
 docker_uninstall() {
 
-    apt_wrapper purge ${BB_DOCKER_PACKAGES[@]}
+    apt_wrapper purge "${BB_DOCKER_PACKAGES[@]}"
 
     # Suppression des images, conteneurs, volumes ...
     sudo rm -rf /var/lib/docker
     sudo rm -rf /var/lib/containerd
 
     # Suppression du repository et de la GPG Docker
-    sudo rm /etc/apt/sources.list.d/docker.sources
-    sudo rm /etc/apt/keyrings/docker.asc
+    sudo rm -f /etc/apt/sources.list.d/docker.sources
+    sudo rm -f /etc/apt/keyrings/docker.asc
 
     # Supprimer le groupe docker
     if getent group docker >/dev/null 2>&1; then

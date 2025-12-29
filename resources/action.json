@@ -2,7 +2,7 @@
     "install": {
         "order": "asc"
     },
-    "update": {
+    "upgrade": {
         "order": "asc"
     },
     "uninstall": {
