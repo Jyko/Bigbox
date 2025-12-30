@@ -21,7 +21,16 @@ nats_install() {
 }
 
 nats_uninstall() { 
-    kutils_release_uninstall "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_HELM_CHART_NAME"
+
+    # Supprimer les contextes de NATS-CLI
+    # FIXME : C'est barbare, mais elle ne nous autorise pas à supprimer le dernier. Faut trouver un workaround
+    rm -rf "$HOME/.config/nats"
+    # Supprimer le binaire de NATS-CLI
+    rm -f "$HOME/go/bin/nats"
+
+    if kutils_is_api_available -s; then
+        kutils_release_uninstall "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_HELM_CHART_NAME"
+    fi
 }
 
 nats_upgrade() {

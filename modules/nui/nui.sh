@@ -11,7 +11,9 @@ nui_install() {
 }
 
 nui_uninstall() {
-    kutils_release_uninstall "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_HELM_CHART_NAME"
+    if kutils_is_api_available -s; then
+        kutils_release_uninstall "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_HELM_CHART_NAME"
+    fi
 }
 
 nui_upgrade() {

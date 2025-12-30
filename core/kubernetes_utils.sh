@@ -52,11 +52,25 @@ kutils_helm_wrapper() {
 
 }
 
+# shellcheck disable=SC2120
 kutils_is_api_available() {
+    local silent=0
+
+    for arg in "$@"; do
+        case "$arg" in
+            -s) silent=1 ;;
+            *) log_error "Argument non supporté \n" && return 2 ;;
+        esac
+    done
+
+    if ! command -v kubectl >/dev/null 2>&1; then
+        (( silent )) || log_warn "kubectl n'est pas installé \n" ;
+        return 1
+    fi
 
     # Check rapide pour voir si l'API Kubernetes du cluster Bigbox est joignable
     if ! run_cmd kutils_kubectl_wrapper get node; then
-        log_warn "L'API Kubernetes n'est pas joignable \n"
+        (( silent )) || log_warn "L'API Kubernetes n'est pas joignable \n"
         return 1
     fi
 

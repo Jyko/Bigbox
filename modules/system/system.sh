@@ -69,3 +69,6 @@ EOF
 
 }
 
+# Il n'est pas prévu de désinstaller/déconfigurer systemctl
+# system_uninstall() { return 0 ; }
+

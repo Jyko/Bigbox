@@ -57,7 +57,7 @@ _menu_version() {
 
     # Nous allons chercher la version dans le fichier d'info du projet, sinon dans le nom du tag, sinon le short ID du commit, sinon ... inconnue :D
     if [[ -f "$BB_INFO_FILE" ]]; then
-        version="$(yq -r '.version' "$BB_INFO_FILE")"
+        version="$(jq -r '.version' "$BB_INFO_FILE")"
     elif ! git -C "$SCRIPT_DIR" rev-parse --git-dir > /dev/null; then
         version="inconnue"
     else

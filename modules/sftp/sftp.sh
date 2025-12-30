@@ -8,7 +8,6 @@ BB_SFTP_HELM_RELEASE_NAME=bigbox-sftp
 BB_SFTP_SSH_KEY_NAME=bigbox-sftp
 
 sftp_install() {
-
     # Vérifier et regénérer une clé SSH pour se connecter sur le SFTP
     ssh_generate_key "$BB_SFTP_SSH_KEY_NAME"
     kutils_release_upgrade "$BB_SFTP_HELM_RELEASE_NAME" "$BB_SFTP_MODULE_HELM_DIR" \
@@ -16,7 +15,9 @@ sftp_install() {
 }
 
 sftp_uninstall() { 
-    kutils_release_uninstall "$BB_SFTP_HELM_RELEASE_NAME" "$BB_SFTP_HELM_CHART_NAME"
+    if kutils_is_api_available -s; then
+        kutils_release_uninstall "$BB_SFTP_HELM_RELEASE_NAME" "$BB_SFTP_HELM_CHART_NAME"
+    fi
     ssh_delete_key "$BB_SFTP_SSH_KEY_NAME"
 }
 

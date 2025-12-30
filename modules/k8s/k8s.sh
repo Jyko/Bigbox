@@ -16,7 +16,95 @@ BB_K8S_CONTEXT_NAME="bigbox"
 BB_K8S_USER_NAME=bigbox
 BB_K8S_CLUSTER_NAME=bigbox
 
+BB_K8S_K3S_UNINSTALL_SCRIPT="/usr/local/bin/k3s-uninstall.sh"
+
+k8s_install() {
+
+
+    _k8s_k3s_install
+    _k8s_tools_install
+    _k8s_configuration_install
+    _k8s_namespace_install
+
+    # Génération de la configuration des outils Kubernetes
+    # Installer et sourcer les aliases et de l'autocomplétion
+    # install_dotfile "kubernetes_aliases.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
+    # install_dotfile "kubernetes_autocompletion.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
+    
+}
+
+k8s_uninstall() {
+
+    _k8s_namespace_uninstall
+    _k8s_configuration_uninstall
+    _k8s_tools_uninstall
+    _k8s_k3s_uninstall
+}
+
+# --------------------
+# K3S
+# --------------------
+_k8s_k3s_verify() {
+    command -v k3s >/dev/null 2>&1 && [[ -f "$BB_K8S_K3S_UNINSTALL_SCRIPT" ]]
+}
+
+_k8s_k3s_install() {
+
+    if _k8s_k3s_verify; then
+        return 0
+    fi
+
+    run_cmd curl -sfL https://get.k3s.io -o /tmp/k3s-install.sh
+    run_cmd sudo sh /tmp/k3s-install.sh
+    rm -f /tmp/k3s-install.sh
+}
+
+_k8s_k3s_uninstall() {
+
+    # Désinstaller k3s via son script, me demandez pas ce que çà fait, j'en sais rien :DDD
+    if _k8s_k3s_verify; then
+        run_cmd sudo "$BB_K8S_K3S_UNINSTALL_SCRIPT"
+    fi
+}
+
+# --------------------
+# Kubernetes tools
+# --------------------
+_k8s_tools_verify() {
+    for cmd in kubectl kubens kubectx helm kubecolor; do
+        command -v $cmd >/dev/null 2>&1
+    done
+}
+
+_k8s_tools_install() {
+
+    if _k8s_tools_verify; then
+        return 0
+    fi
+
+    # Kubectl, Kubectx et Helm
+    apt_wrapper install kubectl kubectx helm
+
+    # Kubecolor
+    wget -O /tmp/kubecolor.deb "https://kubecolor.github.io/packages/deb/pool/main/k/kubecolor/kubecolor_$(wget -q -O- https://kubecolor.github.io/packages/deb/version)_$(dpkg --print-architecture).deb"
+    apt_wrapper install /tmp/kubecolor.deb
+    rm -f /tmp/kubecolor.deb
+}
+
+_k8s_tools_uninstall() {
+    apt_wrapper purge kubectl kubectx helm kubecolor || true
+}
+
+# --------------------
+# Kube configuration
+# --------------------
 _k8s_generate_unified_configuration() {
+
+    # Sans kubectl, impossible de générer une nouvelle configuration unifié, nous laissons donc en l'état
+    # FIXME : Ce cas n'arrive que si nous jouons deux uninstall d'affilés, donc on devrait être couvert, mais sait-on jamais.
+    if ! command -v kubectl >/dev/null 2>&1; then
+        return 0
+    fi
 
     # Petit backup des familles avant toute chose
     if [ -f "$BB_K8S_STANDARD_FILE" ]; then
@@ -35,7 +123,7 @@ _k8s_generate_unified_configuration() {
 
 }
 
-_k8s_configuration() {
+_k8s_configuration_install() {
 
     # Créer le répertoire de configuration K8S ($HOME/.kube) et rendre $USER propriétaire
     mkdir -p "$BB_K8S_CONFIG_DIR"
@@ -50,13 +138,12 @@ _k8s_configuration() {
     # Si les noms des clusters, users et contexts sont différents entre eux, il faut changer la méthode de modification et passer par JQ ou équivalent.
     sed -i "s/\bdefault\b/$BB_K8S_CONTEXT_NAME/g" "$BB_K8S_BIGBOX_FILE"
 
+    # Maintenant que le fichier de configuration bigbox est prêt et idempotent, nous générons une nouvelle configuration unifiée
     _k8s_generate_unified_configuration
-
 }
 
-_k8s_unconfiguration() {
-
-    
+# Désinstaller la configuration bigbox mais conserver les autres
+_k8s_configuration_uninstall() {
 
     # Supprimer ces entrées dans la configuration courante (unified-configs.yaml) via l'outil le plus propre pour la tâche : kubectl config.
     if kubectl config get-contexts "$BB_K8S_CONTEXT_NAME" >/dev/null 2>&1; then
@@ -74,108 +161,41 @@ _k8s_unconfiguration() {
     # Nous ne supprimons rien d'autre dans le $HOME/.kube, pour laisser les confs ajoutées par l'utilisateur.
 }
 
-# Installer microk8s et kubectx
-k8s_install() {
+# --------------------
+# Namespace Bigbox
+# --------------------
+_k8s_namespace_verify() {
+    kutils_kubectl_wrapper get namespace "$BB_K8S_NAMESPACE" >/dev/null 2>&1 
+    return $?
+}
 
-    # --------------------
-    # Installation de K3S
-    # --------------------
+_k8s_namespace_install() {
 
-    # Installation du noeud k3s via script officiel
-    # Se reporter à https://docs.k3s.io/quick-start pour plus de détails, je suis pas venu pour souffrir.
-    if ! command -v k3s >/dev/null 2>&1; then
-        run_cmd curl -sfL https://get.k3s.io -o /tmp/k3s-install.sh
-        run_cmd sudo sh /tmp/k3s-install.sh
-        rm -f /tmp/k3s-install.sh
-    fi
-
-    # --------------------
-    # Installation des outils Kubernetes
-    # --------------------
-
-    # Kubectx
-    apt_wrapper install kubectl kubectx helm
-
-    # Kubecolor
-    if ! command -v kubecolor >/dev/null 2>&1; then
-        wget -O /tmp/kubecolor.deb "https://kubecolor.github.io/packages/deb/pool/main/k/kubecolor/kubecolor_$(wget -q -O- https://kubecolor.github.io/packages/deb/version)_$(dpkg --print-architecture).deb"
-        sudo dpkg -i /tmp/kubecolor.deb
-        apt_wrapper update
-    fi
-
-    # --------------------
-    # Génération de la configuration unique et idempotent Kubernetes
-    # --------------------
-    _k8s_configuration
-
-    # --------------------
-    # Attendre que l'API Kubernetes soit prête
-    # --------------------
+    # Attendre que l'API Kubernetes soit prête avant de tenter des appels.
     if ! kutils_wait_api_available; then
         log_error "Le cluster Kubernetes et son API n'ont pas démarré correctement \n"
         return 2
     fi
 
-    # --------------------
-    # Préparation du noeud Kubernetes
-    # --------------------
+    # Créer le namespace et switch dedans afin d'éviter les conflits et petit accident (coucou la PRD :D)
+    if ! _k8s_namespace_verify; then
+        kutils_kubectl_wrapper create namespace "$BB_K8S_NAMESPACE"
+    fi
 
-    # Créer le namespace si celui-ci n'existe pas afin d'éviter les conflits et petit accident (coucou la PRD :D),
-    # puis switch dedans (même si le wrapper forcera l'utilisation de ce dernier partout)
-    kutils_kubectl_wrapper get namespace "$BB_K8S_NAMESPACE" >/dev/null 2>&1 || kutils_kubectl_wrapper create namespace "$BB_K8S_NAMESPACE"
     kutils_verify_kube_context
-
-    # --------------------
-    # Génération de la configuration des outils Kubernetes
-    # --------------------
-
-    # Installer et sourcer les aliases et de l'autocomplétion
-    # install_dotfile "kubernetes_aliases.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
-    # install_dotfile "kubernetes_autocompletion.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
-
-    
 }
 
-k8s_uninstall() {
-
-    _k8s_unconfiguration
-
-    # Désinstaller le noeud k3s via son script, me demandez pas ce que çà fait, j'en sais rien.
-    if [[ -f /usr/local/bin/k3s-uninstall.sh ]]; then
-        run_cmd sudo /usr/local/bin/k3s-uninstall.sh
+_k8s_namespace_uninstall() {
+    if _k8s_namespace_verify; then
+        # Détruit le reste des ressources persistantes que les stacks auraient laissés (PVC, PV, ...)
+        kutils_kubectl_wrapper delete namespace "$BB_K8S_NAMESPACE"
     fi
 }
 
-# A refléchir
-# k8s_upgrade() { return 0 }
 
-k8s_start() {
+# A refléchir, çà à l'air tricky
+# k8s_upgrade() { return 0 ; }
 
-    run_cmd sudo systemctl start k3s
-
-    # --------------------
-    # Attendre que l'API Kubernetes soit prête
-    # --------------------
-    if ! kutils_wait_api_available; then
-        log_error "Le cluster Kubernetes et son API n'ont pas démarré correctement \n"
-        return 1
-    fi
-
-}
-
-k8s_stop() {
-
-    run_cmd sudo systemctl stop k3s
-
-    local start
-    start=$(date +%s)
-
-    until ! kutils_kubectl_wrapper get nodes >/dev/null 2>&1; do
-        sleep 1
-        if (( $(date +%s) - start > "$BB_K8S_KUBECTL_TIMEOUT" )); then
-            log_error "L'API Kubebernetes répond toujours après $BB_K8S_KUBECTL_TIMEOUT secondes après l'ordre d'arrêt du service k3s"
-            return 1
-        fi
-    done
-
-}
+# Trop d'effet de bord à arrêter k3s et ses services, c'est ultra-galère à redémarrer à la main.
+# k8s_stop() { return 0 ; }
+# k8s_start() { return 0 ; }

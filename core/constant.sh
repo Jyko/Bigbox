@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 
 # Fichier d'info
-BB_INFO_FILE="$SCRIPT_DIR/info.yaml"
+BB_INFO_FILE="$SCRIPT_DIR/info.json"
 
 # Répertoire des modules de la BigBox
 BB_MOD_DIR="$SCRIPT_DIR/modules"
