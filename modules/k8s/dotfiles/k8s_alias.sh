@@ -1,5 +1,5 @@
-# Aliases générés automatiquement par la BigBox pour les outils `Kubenertes`
-# Il est possible de les désactiver individuellement en les commentant et en rechargeant le bashrc : `source ~/.bashrc`
+# Fichier à ne pas modifier manuellement !
+# Sauf si vous savez exactement ce que vous faites
 
 # Aliases pour `Helm`
 alias h='helm'

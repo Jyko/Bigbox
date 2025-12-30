@@ -5,6 +5,7 @@ BB_CORE_GO_PATH="$HOME/go/bin"
 
 # Liste des packages obligatoires pour le fonctionnement de la Bigbox
 BB_CORE_PACKAGES=(
+    bash-completion
     ca-certificates
     curl
     golang-go

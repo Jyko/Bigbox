@@ -148,35 +148,27 @@ cfg_modify_env() {
 
 }
 
-cfg_modify_alias() {
-    local key="" value=""
+cfg_copy_dotfile() {
+    local file="${1:-}"
 
-    for arg in "$@"; do
-        case "$arg" in
-            -k=*) key="${arg#-k=}" ;;
-            -v=*) value="${arg#-v=}" ;;
-            *) log_error "Argument non supporté \n" && return 2 ;;
-        esac
-    done
-
-    if [[ -z "$key" ]]; then
-        log_error "Un nom d'alias est obligatoire \n" && return 2;
+    if [[ -z "$file" || ! -f "$file" ]]; then
+        log_error "Un chemin de fichier dotfile à copier est obligatoire \n" && return 2;
     fi
 
-    fs_assure_existing_file "$BB_CFG_ALIAS_FILE"
+    cp "$file" "$BB_CFG_DOTFILES_DIR/$(basename "$file")"
+}
 
-    local pattern 
-    pattern="^[[:space:]]*alias[[:space:]]+$key="
+cfg_delete_dotfile() {
+    local file="${1:-}"
 
-    # Si la valeur est blanche, nous supprimons la ligne d'instruction dans le fichier de configuration.
-    # Sinon nous ajoutons la ligne avec la nouvelle valeur
-    if [[ -z "$value" ]]; then
-        cfg_set_line -p="$pattern" -l="" -f="$BB_CFG_ALIAS_FILE"
-        fs_delete_empty_file "$BB_CFG_ALIAS_FILE"
-    else
-        cfg_set_line -p="$pattern" -l="alias $key='$value'" -f="$BB_CFG_ALIAS_FILE"
+    if [[ -z "$file" ]]; then
+        log_error "Le nom du dotfile à supprimer est obligatoire \n" && return 2;
     fi
 
-    return 0
+    local path
+    path="$BB_CFG_DOTFILES_DIR/$file"
 
+    if [[ -f "$path" ]]; then
+        rm -f "$path"
+    fi
 }

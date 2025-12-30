@@ -196,29 +196,15 @@ _k8s_namespace_uninstall() {
 # --------------------
 _k8s_dotfiles_install() {
 
-    # Créer les alias (et le dotfile si il n'existe pas)
-    cfg_modify_alias -k="h"         -v="helm"
-    cfg_modify_alias -k="hr"        -v="h repo update"
-    cfg_modify_alias -k="hu"        -v="h upgrade --install"
-    cfg_modify_alias -k="hl"        -v="h ls"
-    cfg_modify_alias -k="kubectl"   -v="kubecolor"
-    cfg_modify_alias -k="k"         -v="kubecolor"
-    cfg_modify_alias -k="kc"        -v="kubectx"
-    cfg_modify_alias -k="kn"        -v="kubens"
+    cfg_copy_dotfile "$BB_K8S_MODULE_DOTFILES_DIR/k8s_alias.sh"
+    cfg_copy_dotfile "$BB_K8S_MODULE_DOTFILES_DIR/k8s_completion.sh"
 
 }
 
 _k8s_dotfiles_uninstall() {
 
-    # Supprimer les alias (et le dotfile si il est vide)
-    cfg_modify_alias -k="h"         -v=""
-    cfg_modify_alias -k="hr"        -v=""
-    cfg_modify_alias -k="hu"        -v=""
-    cfg_modify_alias -k="hl"        -v=""
-    cfg_modify_alias -k="kubectl"   -v=""
-    cfg_modify_alias -k="k"         -v=""
-    cfg_modify_alias -k="kc"        -v=""
-    cfg_modify_alias -k="kn"        -v=""
+    cfg_delete_dotfile "k8s_alias.sh"
+    cfg_delete_dotfile "k8s_completion.sh"
 
 }
 
