@@ -1,0 +1,6 @@
+{
+    "name": "system",
+    "description": "Gestion des pré-requis système de la Bigbox",
+    "priority": -100,
+    "entrypoint": "system.sh"
+}

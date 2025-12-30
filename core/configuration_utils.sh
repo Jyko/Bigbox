@@ -93,8 +93,6 @@ _cfg_env_get_value() {
     # Récupération de la ligne de configuration correspondant à l'export de la variable
     line=$(cfg_get_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -s) || { return $? ; }
 
-    log_debug "line=$line \n"
-
     # Extraction de la valeur
     echo "${line#*=}"
     
@@ -130,16 +128,12 @@ cfg_modify_env() {
     pattern="^[[:space:]]*export[[:space:]]+$key="
     current_value="$(_cfg_env_get_value -k="$key" || true)"
 
-    log_debug "\n\nvalue=$value \ncurrent_value=$current_value \n"
-
     case "$mode" in
         a) new_value=$(list_append -l="$current_value" -v="$value") ;;
         r) new_value="$value" ;;
         d) new_value=$(list_remove -l="$current_value" -v="$value") ;;
         *) log_error "Erreur mode inconnu \n" && return 2 ;;
     esac
-
-    log_debug "value=$value \ncurrent_value=$current_value \nnew_value=$new_value \n"
 
     # Si la nouvelle valeur est blanche à la suite de l'application des modifications, nous supprimons la ligne d'instruction dans le fichier de configuration.
     # Sinon nous ajoutons la ligne avec la nouvelle valeur

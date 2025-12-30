@@ -1,17 +1,22 @@
 {
     "install": {
-        "order": "asc"
+        "order": "asc",
+        "reboot": "true"
     },
     "upgrade": {
-        "order": "asc"
+        "order": "asc",
+        "reboot": "true"
     },
     "start": {
-        "order": "asc"
+        "order": "asc",
+        "reboot": "false"
     },
     "uninstall": {
-        "order": "desc"
+        "order": "desc",
+        "reboot": "true"
     },
     "stop": {
-        "order": "desc"
+        "order": "desc",
+        "reboot": "false"
     }
 }

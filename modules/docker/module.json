@@ -1,0 +1,6 @@
+{
+    "name": "docker",
+    "description": "Gestion de Docker et sa configuration",
+    "priority": 100,
+    "entrypoint": "docker.sh"
+}

@@ -4,41 +4,79 @@
 # Liste des modules chargés ordonnée par priorité d'exécution
 declare -A MODULES
 
-load_modules() {
+module_verify() {
+    local name priority entrypoint
+
+    for arg in "$@"; do
+        case "$arg" in
+            -n=*) name="${arg#-n=}" ;;
+            -p=*) priority="${arg#-p=}" ;;
+            -e=*) entrypoint="${arg#-e=}" ;;
+            *) log_error "Argument non supporté \n" && return 2 ;;
+        esac
+    done
+
+    if [[ -z "$name" ]]; then
+        log_error "La propriété \"name\" est obligatoire \n"
+        return 1
+    fi
+
+    if [[ -z "$priority" ]]; then
+        log_error "La propriété \"priority\" est obligatoire \n"
+        return 1
+    fi
+
+    if [[ ! -f "$entrypoint" ]]; then
+        log_error "La propriété \"entrypoint\" est obligatoire et doit pointer vers un fichier executable : \"$entrypoint\" \n"
+        return 1
+    fi
+
+    return 0
+}
+
+module_load() {
 
     # Charger tous les modules
-    for module in "$BB_MOD_DIR"/*/*.sh; do
+    for module in "$BB_MOD_DIR"/*/module.json; do
+
+        local path name priority entrypoint
+
+        # Récupérer le root path du module
+        path=$(dirname "$module")
+
+        name=$(jq -r '.name' "$module")
+        priority=$(jq -r '.priority' "$module")
+        entrypoint="$path/$(jq -r '.entrypoint' "$module")"
 
         log_debug "\r\t⏳ Chargement du module $module"
 
-        source "$module"
-
-        if [[ -z "$MODULE_NAME" || -z "$MODULE_PRIORITY" ]]; then
-            log_error "\r\t❌ Chargement échoué du module $module\n"
+        if ! module_verify -n="$name" -p="$priority" -e="$entrypoint"; then
+            log_error "Le chargement du descripteur de module $path/module.json a échoué"
             exit 1
         fi
 
-        MODULES["$MODULE_PRIORITY"]="$MODULE_NAME"
+        source "$entrypoint"
 
-        log_debug "\r\t✅ Chargement réussi du module $module\n"
+        MODULES["$priority"]="$name"
 
-        unset MODULE_NAME MODULE_PRIORITY
+        log_debug "\r\t✅ Chargement réussi du module $module \n"
 
     done
 
 }
 
-run_modules() {
+module_run() {
     local action="$1"
 
     # Nous récupérons la configuration de l'action dans le resources/action.json
     local action_config_file="$BB_RSC_DIR/action.json"
-    local order_config
+    local order
     local sort_args=(-n)
 
-    order_config=$(jq -r ".\"$action\".order // \"asc\"" "$action_config_file")
+    order=$(jq -r ".\"$action\".order // \"asc\"" "$action_config_file")
+    is_reboot_wanted=$(jq -r ".\"$action\".reboot" "$action_config_file")
 
-    if [[ "$order_config" == "desc" ]]; then
+    if [[ "$order" == "desc" ]]; then
         sort_args+=(-r)
     fi
 
@@ -66,5 +104,11 @@ run_modules() {
         fi
 
     done
+
+    if [[ "$is_reboot_wanted" == "true" ]]; then
+        log_warn "
+        \t⚠️  Ne pas oublier de redémarrer le conteneur WSL2 (Windows) ou l'OS (Ubuntu Desktop) pour la prise en compte des modifications des utilisateurs, groupes et permissions. ⚠️
+        "
+    fi
     
 }

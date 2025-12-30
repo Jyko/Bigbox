@@ -1,0 +1,6 @@
+{
+    "name": "nui",
+    "description": "Gestion de l'instance NUI (web client NATS)",
+    "priority": 500,
+    "entrypoint": "nui.sh"
+}

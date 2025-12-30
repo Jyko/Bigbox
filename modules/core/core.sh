@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
-# METADATA du module
-MODULE_NAME="core"
-MODULE_PRIORITY=0
-
 BB_CORE_GO_PATH="$HOME/go/bin"
 
 # Liste des packages obligatoires pour le fonctionnement de la Bigbox

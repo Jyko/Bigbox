@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
-# METADATA du module
-MODULE_NAME="docker"
-MODULE_PRIORITY=100
-
 BB_DOCKER_PACKAGES=(
     docker-ce
     docker-ce-cli

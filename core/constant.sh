@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
-BB_ALLOWED_ACTIONS=(
-  help
-  install
-  start
-  stop
-  uninstall
-  upgrade
-)
+# Fichier d'info
+BB_INFO_FILE="$SCRIPT_DIR/info.yaml"
 
 # Répertoire des modules de la BigBox
 BB_MOD_DIR="$SCRIPT_DIR/modules"

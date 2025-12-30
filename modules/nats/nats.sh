@@ -1,6 +1,5 @@
-# METADATA du module
-MODULE_NAME="nats"
-MODULE_PRIORITY=310
+#!/usr/bin/env bash
+# shellcheck shell=bash
 
 BB_NATS_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_NATS_MODULE_HELM_DIR="$BB_NATS_MODULE_BASE_DIR/helm"

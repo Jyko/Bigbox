@@ -41,23 +41,3 @@ apt_wrapper() {
         run_cmd sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq -o=Dpkg::Use-Pty=0 "$@" </dev/null >/dev/null 2>&1
     fi
 }
-
-is_valid_action() {
-    local action="$1"
-
-    for a in "${BB_ALLOWED_ACTIONS[@]}"; do
-        [[ "$a" == "$action" ]] && return 0
-    done
-
-    return 1
-}
-
-verify_action() {
-
-    if [[ "$ACTION_SET" == true ]]; then
-        echo "Une seule action est autorisée à la fois"
-        echo "Pour obtenir de l'aide : bigbox.sh help"
-        exit 1
-    fi
-
-}

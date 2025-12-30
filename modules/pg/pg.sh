@@ -1,6 +1,5 @@
-# METADATA du module
-MODULE_NAME="pg"
-MODULE_PRIORITY=300
+#!/usr/bin/env bash
+# shellcheck shell=bash
 
 BB_PG_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_PG_MODULE_HELM_DIR="$BB_PG_MODULE_BASE_DIR/helm"

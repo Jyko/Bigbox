@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
-# METADATA du module
-MODULE_NAME="k8s"
-MODULE_PRIORITY=200
-
 BB_K8S_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_K8S_MODULE_DOTFILES_DIR="$BB_K8S_MODULE_BASE_DIR/dotfiles"
 

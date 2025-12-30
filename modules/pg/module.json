@@ -1,0 +1,6 @@
+{
+    "name": "pg",
+    "description": "Gestion de l'instance de PostgreSQL et de ses outils (postgresql-client)",
+    "priority": 300,
+    "entrypoint": "pg.sh"
+}

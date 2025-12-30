@@ -1,6 +1,5 @@
-# METADATA du module
-MODULE_NAME="sftp"
-MODULE_PRIORITY=320
+#!/usr/bin/env bash
+# shellcheck shell=bash
 
 BB_SFTP_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_SFTP_MODULE_HELM_DIR="$BB_SFTP_MODULE_BASE_DIR/helm"

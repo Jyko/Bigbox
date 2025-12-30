@@ -1,6 +1,5 @@
-# METADATA du module
-MODULE_NAME="nui"
-MODULE_PRIORITY=500
+#!/usr/bin/env bash
+# shellcheck shell=bash
 
 BB_NUI_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_NUI_MODULE_HELM_DIR="$BB_NUI_MODULE_BASE_DIR/helm"

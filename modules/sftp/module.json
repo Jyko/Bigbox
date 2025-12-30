@@ -1,0 +1,6 @@
+{
+    "name": "sftp",
+    "description": "Gestion de l'instance de Atmoz/SFTP et de sa configuration (ssh key, droits ...)",
+    "priority": 320,
+    "entrypoint": "sftp.sh"
+}
