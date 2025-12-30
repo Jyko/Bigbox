@@ -13,28 +13,28 @@ pg_install() {
         apt_wrapper install "postgresql-client-$BB_PG_VERSION"
     fi
 
-    kutils_release_upgrade "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_MODULE_HELM_DIR"
+    run_cmd kutils_release_upgrade "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_MODULE_HELM_DIR"
 }
 
 pg_uninstall() {
 
     apt_wrapper purge "postgresql-client-$BB_PG_VERSION" || true
 
-    if kutils_is_api_available -s; then
-        kutils_release_uninstall "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_HELM_CHART_NAME"
+    if run_cmd_silently kutils_is_api_available; then
+        run_cmd kutils_release_uninstall "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_HELM_CHART_NAME"
     fi
 }
 
 pg_upgrade() {
-    kutils_release_upgrade "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_MODULE_HELM_DIR"
+    run_cmd kutils_release_upgrade "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_MODULE_HELM_DIR"
 }
 
 pg_start() {
-    kutils_release_upgrade "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_MODULE_HELM_DIR"
+    run_cmd kutils_release_upgrade "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_MODULE_HELM_DIR"
 }
 
 pg_stop() {
-    kutils_release_stop "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_HELM_CHART_NAME" "$BB_PG_MODULE_HELM_DIR"
+    run_cmd kutils_release_stop "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_HELM_CHART_NAME" "$BB_PG_MODULE_HELM_DIR"
 }
 
 _pg_client_verify() {

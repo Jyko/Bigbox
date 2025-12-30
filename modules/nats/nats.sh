@@ -9,7 +9,7 @@ BB_NATS_HELM_RELEASE_NAME=bigbox-nats
 nats_install() {
 
     # Déployer l'instance NATS
-    kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
+    run_cmd kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
 
     # Installer la NATS-CLI
     run_cmd go install github.com/nats-io/natscli/nats@latest
@@ -28,19 +28,19 @@ nats_uninstall() {
     # Supprimer le binaire de NATS-CLI
     rm -f "$HOME/go/bin/nats"
 
-    if kutils_is_api_available -s; then
-        kutils_release_uninstall "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_HELM_CHART_NAME"
+    if run_cmd_silently kutils_is_api_available; then
+        run_cmd kutils_release_uninstall "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_HELM_CHART_NAME"
     fi
 }
 
 nats_upgrade() {
-    kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
+    run_cmd kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
 }
 
 nats_start() {
-    kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
+    run_cmd kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
 }
 
 nats_stop() {
-    kutils_release_stop "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_HELM_CHART_NAME" "$BB_NATS_MODULE_HELM_DIR"
+    run_cmd kutils_release_stop "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_HELM_CHART_NAME" "$BB_NATS_MODULE_HELM_DIR"
 }

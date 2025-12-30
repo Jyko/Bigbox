@@ -7,23 +7,23 @@ BB_NUI_HELM_CHART_NAME=bigbox-nui
 BB_NUI_HELM_RELEASE_NAME=bigbox-nui
 
 nui_install() {
-    kutils_release_upgrade "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_MODULE_HELM_DIR"
+    run_cmd kutils_release_upgrade "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_MODULE_HELM_DIR"
 }
 
 nui_uninstall() {
-    if kutils_is_api_available -s; then
-        kutils_release_uninstall "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_HELM_CHART_NAME"
+    if run_cmd_silently kutils_is_api_available; then
+        run_cmd kutils_release_uninstall "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_HELM_CHART_NAME"
     fi
 }
 
 nui_upgrade() {
-    kutils_release_upgrade "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_MODULE_HELM_DIR"
+    run_cmd kutils_release_upgrade "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_MODULE_HELM_DIR"
 }
 
 nui_start() {
-    kutils_release_upgrade "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_MODULE_HELM_DIR"
+    run_cmd kutils_release_upgrade "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_MODULE_HELM_DIR"
 }
 
 nui_stop() {
-    kutils_release_stop "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_HELM_CHART_NAME"  "$BB_NUI_MODULE_HELM_DIR"
+    run_cmd kutils_release_stop "$BB_NUI_HELM_RELEASE_NAME" "$BB_NUI_HELM_CHART_NAME"  "$BB_NUI_MODULE_HELM_DIR"
 }

@@ -30,6 +30,23 @@ run_cmd() {
     fi
 }
 
+# Wrapper universel de commandes qui ne print pas les erreurs en mode autre que debug
+# Utile pour les functions utilisées comme condition, dont on attend qu'elles retournent 0 ou 1 en comportement nominal.
+# Contrôle les flux stdin/stdout/stderr des commandes executés.
+# $@        : La commande à executer
+run_cmd_silently() {
+
+    # En débug nous ne contrôlons pas stdout ou stderr et laissons le comportement par défaut.
+    if log_is_debug; then
+        "$@"
+    else
+        # En info et silent nous capturons stdout et stderr pour éviter de log toutes les commandes
+        local output
+        output="$("$@" 2>&1)"
+        return $?
+    fi
+}
+
 # Décorateur pour apt-get afin que celui-ci passe en mode non-interractif complet et
 # ne redirige aucun flux vers /dev/tty, bloquant ainsi les scripts.
 apt_wrapper() {
