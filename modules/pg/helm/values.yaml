@@ -24,4 +24,4 @@ resources:
 
 persistence:
   size: 1Gi
-  storageClassName: "microk8s-hostpath"
+  storageClassName: local-path

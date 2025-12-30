@@ -19,5 +19,5 @@ resources:
     cpu: "500m"
 
 persistence:
-  storageClass: "microk8s-hostpath"
+  storageClass: "local-path"
   size: 1Gi

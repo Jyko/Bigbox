@@ -19,4 +19,4 @@ resources:
 
 persistence:
   size: 250Mi
-  storageClass: "microk8s-hostpath"
+  storageClass: "local-path"

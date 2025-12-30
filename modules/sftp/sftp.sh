@@ -9,10 +9,11 @@ BB_SFTP_HELM_RELEASE_NAME=bigbox-sftp
 BB_SFTP_SSH_KEY_NAME=bigbox-sftp
 
 sftp_install() {
+
     # Vérifier et regénérer une clé SSH pour se connecter sur le SFTP
     ssh_generate_key "$BB_SFTP_SSH_KEY_NAME"
     kutils_release_upgrade "$BB_SFTP_HELM_RELEASE_NAME" "$BB_SFTP_MODULE_HELM_DIR" \
-        --set sftp.clientPublicKey=$(base64 -w0 $(ssh_get_key_path "$BB_SFTP_SSH_KEY_NAME.pub"))
+        --set sftp.clientPublicKey="$(base64 -w0 "$(ssh_get_key_path "$BB_SFTP_SSH_KEY_NAME.pub")")"
 }
 
 sftp_uninstall() { 
@@ -24,14 +25,14 @@ sftp_upgrade() {
     # Vérifier et regénérer une clé SSH pour se connecter sur le SFTP
     ssh_generate_key "$BB_SFTP_SSH_KEY_NAME"
     kutils_release_upgrade "$BB_SFTP_HELM_RELEASE_NAME" "$BB_SFTP_MODULE_HELM_DIR" \
-        --set sftp.clientPublicKey=$(base64 -w0 $(ssh_get_key_path "$BB_SFTP_SSH_KEY_NAME.pub"))
+        --set sftp.clientPublicKey="$(base64 -w0 "$(ssh_get_key_path "$BB_SFTP_SSH_KEY_NAME.pub")")"
 }
 
 sftp_start() {
     # Vérifier et regénérer une clé SSH pour se connecter sur le SFTP
     ssh_generate_key "$BB_SFTP_SSH_KEY_NAME"
     kutils_release_upgrade "$BB_SFTP_HELM_RELEASE_NAME" "$BB_SFTP_MODULE_HELM_DIR" \
-        --set sftp.clientPublicKey=$(base64 -w0 $(ssh_get_key_path "$BB_SFTP_SSH_KEY_NAME.pub"))
+        --set sftp.clientPublicKey="$(base64 -w0 "$(ssh_get_key_path "$BB_SFTP_SSH_KEY_NAME.pub")")"
 }
 
 sftp_stop() {

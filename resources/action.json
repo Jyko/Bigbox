@@ -1,0 +1,17 @@
+{
+    "install": {
+        "order": "asc"
+    },
+    "upgrade": {
+        "order": "asc"
+    },
+    "start": {
+        "order": "asc"
+    },
+    "uninstall": {
+        "order": "desc"
+    },
+    "stop": {
+        "order": "desc"
+    }
+}

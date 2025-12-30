@@ -1,135 +1,185 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
 # METADATA du module
 MODULE_NAME="k8s"
 MODULE_PRIORITY=200
-# Workaround le temps que je charge les modules sans effacer MODULE_NAME et MODULE_PRIORITY à chaque fois
-BB_K8S_MODULE_NAME="k8s"
+
 BB_K8S_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_K8S_MODULE_DOTFILES_DIR="$BB_K8S_MODULE_BASE_DIR/dotfiles"
-BB_K8S_MICROK8S_TIMEOUT=30
+
+BB_K8S_KUBECTL_TIMEOUT="30"
+
+BB_K8S_BIGBOX_FILE="$BB_K8S_CONFIG_DIR/bigbox.yaml"
+BB_K8S_BACKUP_FILE="$BB_K8S_CONFIG_DIR/backup-config.yaml"
+BB_K8S_STANDARD_FILE="$BB_K8S_CONFIG_DIR/config"
+BB_K8S_UNIFIED_FILE="$BB_K8S_CONFIG_DIR/unified-configs.yaml"
+
+# Gaffe avec ces trois propriétés, çà contrôle les noms attendus des contextes, users et clusters dans le fichier de configuration K8S.
+BB_K8S_CONTEXT_NAME="bigbox"
+BB_K8S_USER_NAME=bigbox
+BB_K8S_CLUSTER_NAME=bigbox
+
+_k8s_generate_unified_configuration() {
+
+    # Petit backup des familles avant toute chose
+    if [ -f "$BB_K8S_STANDARD_FILE" ]; then
+        cp -L "$BB_K8S_STANDARD_FILE" "$BB_K8S_BACKUP_FILE"
+        rm -f "$BB_K8S_STANDARD_FILE"
+    fi
+
+    # Génération de la configuration unifiée
+    # On appelle kubectl nature, sans wrapper.
+    # En cas de contexte identique, le dernier chargé prend la précédence, d'où l'ordre de passage en argument des fichiers dans KUBECONFIG.
+    # Kubectl considère un chemin de fichier null comme un fichier vide
+    KUBECONFIG="$BB_K8S_STANDARD_FILE:$BB_K8S_BIGBOX_FILE" kubectl config view --merge --flatten > "$BB_K8S_UNIFIED_FILE"
+
+    # Symlink sur config.yaml, comme çà c'est propre et portable 👍
+    ln -sf "$BB_K8S_UNIFIED_FILE" "$BB_K8S_STANDARD_FILE"
+
+}
+
+_k8s_configuration() {
+
+    # Créer le répertoire de configuration K8S ($HOME/.kube) et rendre $USER propriétaire
+    mkdir -p "$BB_K8S_CONFIG_DIR"
+    sudo chown -f -R "$USER" "$BB_K8S_CONFIG_DIR"
+
+    # Copier le fichier de config de base k3s vers le dossier de conf $HOME/.kube
+    sudo cp "/etc/rancher/k3s/k3s.yaml" "$BB_K8S_BIGBOX_FILE"
+    sudo chown "$USER":"$USER" "$BB_K8S_BIGBOX_FILE"
+    
+    # Renommer le contexte, le user et le cluster k3s par défault pour éviter les conflits et effet de bord
+    # TODO: C'est pas le plus solide ou le plus joli, mais çà fait le taff'.
+    # Si les noms des clusters, users et contexts sont différents entre eux, il faut changer la méthode de modification et passer par JQ ou équivalent.
+    sed -i "s/\bdefault\b/$BB_K8S_CONTEXT_NAME/g" "$BB_K8S_BIGBOX_FILE"
+
+    _k8s_generate_unified_configuration
+
+}
+
+_k8s_unconfiguration() {
+
+    
+
+    # Supprimer ces entrées dans la configuration courante (unified-configs.yaml) via l'outil le plus propre pour la tâche : kubectl config.
+    if kubectl config get-contexts "$BB_K8S_CONTEXT_NAME" >/dev/null 2>&1; then
+        kutils_kubectl_wrapper config delete-context "$BB_K8S_CONTEXT_NAME"
+        kutils_kubectl_wrapper config delete-cluster "$BB_K8S_CLUSTER_NAME"
+        kutils_kubectl_wrapper config delete-user "$BB_K8S_USER_NAME"
+    fi
+
+    # Supprimer le fichier de configuration Bigbox
+    sudo rm -f "$BB_K8S_BIGBOX_FILE"
+
+    # Maintenant que la configuration actuelle et les fichiers la reflétant ne contiennent plus de trace de la Bigbox, nous recréons une configuration unifiée propre.
+    _k8s_generate_unified_configuration
+
+    # Nous ne supprimons rien d'autre dans le $HOME/.kube, pour laisser les confs ajoutées par l'utilisateur.
+}
 
 # Installer microk8s et kubectx
 k8s_install() {
 
-    snap_wrapper install microk8s --classic
+    # --------------------
+    # Installation de K3S
+    # --------------------
 
-    # Ajouter le $USER au groupe pour ne plus avoir à sudo, ne prend effet qu'après un redémarrage du WSL2 ou un reboot OS
-    sudo usermod -a -G microk8s $USER
+    # Installation du noeud k3s via script officiel
+    # Se reporter à https://docs.k3s.io/quick-start pour plus de détails, je suis pas venu pour souffrir.
+    if ! command -v k3s >/dev/null 2>&1; then
+        run_cmd curl -sfL https://get.k3s.io -o /tmp/k3s-install.sh
+        run_cmd sudo sh /tmp/k3s-install.sh
+        rm -f /tmp/k3s-install.sh
+    fi
 
-    ######################################
-    # INSTALLATION des outils Kubernetes #
-    ######################################
-
-    # Kubectl et Helm non wrap dans microk8s
-    snap_wrapper install kubectl --classic
-    snap_wrapper install helm --classic
+    # --------------------
+    # Installation des outils Kubernetes
+    # --------------------
 
     # Kubectx
-    apt_wrapper install -y kubectx
+    apt_wrapper install kubectl kubectx helm
 
     # Kubecolor
     if ! command -v kubecolor >/dev/null 2>&1; then
-        wget -O /tmp/kubecolor.deb https://kubecolor.github.io/packages/deb/pool/main/k/kubecolor/kubecolor_$(wget -q -O- https://kubecolor.github.io/packages/deb/version)_$(dpkg --print-architecture).deb
+        wget -O /tmp/kubecolor.deb "https://kubecolor.github.io/packages/deb/pool/main/k/kubecolor/kubecolor_$(wget -q -O- https://kubecolor.github.io/packages/deb/version)_$(dpkg --print-architecture).deb"
         sudo dpkg -i /tmp/kubecolor.deb
         apt_wrapper update
     fi
 
-    ##############################
-    # CONFIGURATION des DOTFILES #
-    ##############################
+    # --------------------
+    # Génération de la configuration unique et idempotent Kubernetes
+    # --------------------
+    _k8s_configuration
 
-    # Créer le répertoire de configuration K8S et rendre $USER propriétaire
-    mkdir -p "$BB_K8S_CONFIG_DIR"
-    sudo chown -f -R $USER "$BB_K8S_CONFIG_DIR"
-
-    # Installer et sourcer les aliases et de l'autocomplétion
-    install_dotfile "kubernetes_aliases.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
-    install_dotfile "kubernetes_autocompletion.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
-
-    ############################################
-    # CONFIGURATION du $HOME/.kube/config.yaml #
-    ############################################
-    
-    local standard_file="$BB_K8S_CONFIG_DIR/config"
-    local unified_file="$BB_K8S_CONFIG_DIR/unified-configs.yaml"
-    local backup_file="$BB_K8S_CONFIG_DIR/backup-config.yaml"
-    local bigbox_file="$BB_K8S_CONFIG_DIR/bigbox.yaml"
-
-    # Backup des anciennes configurations et des symlinks si il en existe
-    if [ -f "$standard_file" ] && [ ! -L "$standard_file" ]; then
-        mv "$standard_file" "$backup_file"
+    # --------------------
+    # Attendre que l'API Kubernetes soit prête
+    # --------------------
+    if ! kutils_wait_api_available; then
+        log_error "Le cluster Kubernetes et son API n'ont pas démarré correctement \n"
+        return 2
     fi
 
-    # Est-ce qu'il existe déjà un contexte BigBox dans l'ancienne configuration ?
-    local need_merge=1
-
-    if sudo kubectl --kubeconfig="$backup_file" config get-contexts -o name 2>&1 \
-        | grep -q "^$BB_K8S_CONTEXT$"; then
-
-        # Pas besoin de merge l'ancienne configuration avec une nouvelle, le contexte bigbox est déjà configuré
-        echo "▬ Le contexte $BB_K8S_CONTEXT est déjà présent dans l'ancienne configuration Kubenertes"
-        need_merge=1
-    else
-        # Il va falloir merge l'ancienne configuration avec une nouvelle pour y ajouter le contexte bigbox
-        echo "✚ Le contexte $BB_K8S_CONTEXT n'existe pas dans l'ancienne configuration Kubenertes"
-        need_merge=0
-
-        # Générer le fichier de configuration
-        sudo microk8s config > "$bigbox_file"
-        # Renommer le contexte pour éviter les conflits et éviter les duplicats
-        sudo kubectl --kubeconfig="$bigbox_file" config rename-context microk8s "$BB_K8S_CONTEXT"
-    fi
-
-    # Génération de la configuration unifiée avec ou sans merge
-    KUBECONFIG="$backup_file${need_merge:+:$bigbox_file}" kubectl config view --merge --flatten > "$unified_file"
-
-    # Symlink sur config.yaml, comme çà c'est propre et portable 👍
-    ln -sf "$unified_file" "$standard_file"
-
-    #####################################
-    # CONFIGURATION du noeud Kubernetes #
-    #####################################
-
-    # Activer :
-    #   - La persitance sur le FS du Host pour que des volumes persistants puissent être créer
-    #   - Le service de métrologie (Prometheus)
-    sudo microk8s enable hostpath-storage metrics-server
+    # --------------------
+    # Préparation du noeud Kubernetes
+    # --------------------
 
     # Créer le namespace si celui-ci n'existe pas afin d'éviter les conflits et petit accident (coucou la PRD :D),
     # puis switch dedans (même si le wrapper forcera l'utilisation de ce dernier partout)
-    kutils_kubectl_wrapper get namespace "$BB_K8S_NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "$BB_K8S_NAMESPACE"
+    kutils_kubectl_wrapper get namespace "$BB_K8S_NAMESPACE" >/dev/null 2>&1 || kutils_kubectl_wrapper create namespace "$BB_K8S_NAMESPACE"
     kutils_verify_kube_context
+
+    # --------------------
+    # Génération de la configuration des outils Kubernetes
+    # --------------------
+
+    # Installer et sourcer les aliases et de l'autocomplétion
+    # install_dotfile "kubernetes_aliases.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
+    # install_dotfile "kubernetes_autocompletion.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
+
+    
 }
 
-# TODO, y a du taff'
-# k8s_uninstall() { return 0 }
+k8s_uninstall() {
+
+    _k8s_unconfiguration
+
+    # Désinstaller le noeud k3s via son script, me demandez pas ce que çà fait, j'en sais rien.
+    if [[ -f /usr/local/bin/k3s-uninstall.sh ]]; then
+        run_cmd sudo /usr/local/bin/k3s-uninstall.sh
+    fi
+}
 
 # A refléchir
 # k8s_upgrade() { return 0 }
 
 k8s_start() {
 
-    k8s_verify_microk8s_install
+    run_cmd sudo systemctl start k3s
 
-    microk8s start >/dev/null 2>&1 || true
-
-    # Attendre que microk8s soit prêt avec timeout 30s
-    if ! timeout "$BB_K8S_MICROK8S_TIMEOUT" microk8s status --wait-ready >/dev/null 2>&1; then
-        echo -e "\r\t🕙 microk8s n'est pas prêt après ${BB_K8S_MICROK8S_TIMEOUT}s 💥 Vérifiez les logs avec 'sudo microk8s inspect' 🤓"
-        return 2
+    # --------------------
+    # Attendre que l'API Kubernetes soit prête
+    # --------------------
+    if ! kutils_wait_api_available; then
+        log_error "Le cluster Kubernetes et son API n'ont pas démarré correctement \n"
+        return 1
     fi
+
 }
 
 k8s_stop() {
 
-    k8s_verify_microk8s_install
-    
-    microk8s stop >/dev/null 2>&1 || true
-}
+    run_cmd sudo systemctl stop k3s
 
-k8s_verify_microk8s_install() {
+    local start
+    start=$(date +%s)
 
-    if ! command -v microk8s >/dev/null 2>&1; then
-        echo -e "\r\t🧐 microk8s n'est pas installé"
-        return 1
-    fi
+    until ! kutils_kubectl_wrapper get nodes >/dev/null 2>&1; do
+        sleep 1
+        if (( $(date +%s) - start > "$BB_K8S_KUBECTL_TIMEOUT" )); then
+            log_error "L'API Kubebernetes répond toujours après $BB_K8S_KUBECTL_TIMEOUT secondes après l'ordre d'arrêt du service k3s"
+            return 1
+        fi
+    done
+
 }
