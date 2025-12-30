@@ -35,10 +35,10 @@ run_cmd() {
 apt_wrapper() {
     if log_is_debug; then
         # Comportement normal
-        sudo apt-get -y "$@"
+        run_cmd sudo apt-get -y "$@"
     else 
         # Mode silencieux complet
-        sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq -o=Dpkg::Use-Pty=0 "$@" </dev/null >/dev/null 2>&1
+        run_cmd sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq -o=Dpkg::Use-Pty=0 "$@" </dev/null >/dev/null 2>&1
     fi
 }
 

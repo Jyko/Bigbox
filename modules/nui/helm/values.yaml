@@ -1,18 +1,13 @@
-postgresql:
-  user: bigbox
-  password: bigbox
-  database: bigbox
-
 replicaCount: 1
 
 image:
-  repository: postgres
-  tag: "17-alpine"
+  repository: ghcr.io/nats-nui/nui
+  tag: latest
   pullPolicy: IfNotPresent
 
 service:
   type: NodePort
-  port: 30001
+  port: 30012
 
 resources:
   requests:
@@ -23,5 +18,5 @@ resources:
     cpu: "500m"
 
 persistence:
-  size: 1Gi
-  storageClassName: "microk8s-hostpath"
+  size: 250Mi
+  storageClass: "local-path"

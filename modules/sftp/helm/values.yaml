@@ -1,13 +1,17 @@
+sftp:
+  user: bigbox
+  directory: upload
+
 replicaCount: 1
 
 image:
-  repository: ghcr.io/nats-nui/nui
+  repository: atmoz/sftp
   tag: latest
   pullPolicy: IfNotPresent
 
 service:
   type: NodePort
-  port: 30012
+  client: 30020
 
 resources:
   requests:
@@ -18,5 +22,5 @@ resources:
     cpu: "500m"
 
 persistence:
+  storageClass: "local-path"
   size: 250Mi
-  storageClass: "microk8s-hostpath"

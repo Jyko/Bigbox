@@ -8,6 +8,8 @@ MODULE_PRIORITY=200
 BB_K8S_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_K8S_MODULE_DOTFILES_DIR="$BB_K8S_MODULE_BASE_DIR/dotfiles"
 
+BB_K8S_KUBECTL_TIMEOUT="30"
+
 BB_K8S_BIGBOX_FILE="$BB_K8S_CONFIG_DIR/bigbox.yaml"
 BB_K8S_BACKUP_FILE="$BB_K8S_CONFIG_DIR/backup-config.yaml"
 BB_K8S_STANDARD_FILE="$BB_K8S_CONFIG_DIR/config"
@@ -27,9 +29,10 @@ _k8s_generate_unified_configuration() {
     fi
 
     # Génération de la configuration unifiée
+    # On appelle kubectl nature, sans wrapper.
     # En cas de contexte identique, le dernier chargé prend la précédence, d'où l'ordre de passage en argument des fichiers dans KUBECONFIG.
-    # Faut savoir que kubectl s'en bat les couilles des fichiers inexistants, pour lui c'est l'équivalent de config vide. Bien codé les outils de DEVOPS, on voit que c'est fait par des professionnels :+1:
-    KUBECONFIG="$BB_K8S_STANDARD_FILE:$BB_K8S_BIGBOX_FILE" kutils_kubectl_wrapper config view --merge --flatten > "$BB_K8S_UNIFIED_FILE"
+    # Kubectl considère un chemin de fichier null comme un fichier vide
+    KUBECONFIG="$BB_K8S_STANDARD_FILE:$BB_K8S_BIGBOX_FILE" kubectl config view --merge --flatten > "$BB_K8S_UNIFIED_FILE"
 
     # Symlink sur config.yaml, comme çà c'est propre et portable 👍
     ln -sf "$BB_K8S_UNIFIED_FILE" "$BB_K8S_STANDARD_FILE"
@@ -85,7 +88,9 @@ k8s_install() {
     # Installation du noeud k3s via script officiel
     # Se reporter à https://docs.k3s.io/quick-start pour plus de détails, je suis pas venu pour souffrir.
     if ! command -v k3s >/dev/null 2>&1; then
-        curl -sfL https://get.k3s.io | sudo sh -
+        run_cmd curl -sfL https://get.k3s.io -o /tmp/k3s-install.sh
+        run_cmd sudo sh /tmp/k3s-install.sh
+        rm -f /tmp/k3s-install.sh
     fi
 
     # --------------------
@@ -106,6 +111,14 @@ k8s_install() {
     # Génération de la configuration unique et idempotent Kubernetes
     # --------------------
     _k8s_configuration
+
+    # --------------------
+    # Attendre que l'API Kubernetes soit prête
+    # --------------------
+    if ! kutils_wait_api_available; then
+        log_error "Le cluster Kubernetes et son API n'ont pas démarré correctement \n"
+        return 2
+    fi
 
     # --------------------
     # Préparation du noeud Kubernetes
@@ -133,13 +146,40 @@ k8s_uninstall() {
 
     # Désinstaller le noeud k3s via son script, me demandez pas ce que çà fait, j'en sais rien.
     if [[ -f /usr/local/bin/k3s-uninstall.sh ]]; then
-        sudo . /usr/local/bin/k3s-uninstall.sh
+        run_cmd sudo /usr/local/bin/k3s-uninstall.sh
     fi
 }
 
 # A refléchir
 # k8s_upgrade() { return 0 }
 
-# k8s_start() { }
+k8s_start() {
 
-# k8s_stop() { }
+    run_cmd sudo systemctl start k3s
+
+    # --------------------
+    # Attendre que l'API Kubernetes soit prête
+    # --------------------
+    if ! kutils_wait_api_available; then
+        log_error "Le cluster Kubernetes et son API n'ont pas démarré correctement \n"
+        return 1
+    fi
+
+}
+
+k8s_stop() {
+
+    run_cmd sudo systemctl stop k3s
+
+    local start
+    start=$(date +%s)
+
+    until ! kutils_kubectl_wrapper get nodes >/dev/null 2>&1; do
+        sleep 1
+        if (( $(date +%s) - start > "$BB_K8S_KUBECTL_TIMEOUT" )); then
+            log_error "L'API Kubebernetes répond toujours après $BB_K8S_KUBECTL_TIMEOUT secondes après l'ordre d'arrêt du service k3s"
+            return 1
+        fi
+    done
+
+}

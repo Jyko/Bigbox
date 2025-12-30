@@ -50,11 +50,11 @@ run_modules() {
 
         # Si le module ne dispose pas de l'action nous écrivons un message de skip
         if ! declare -f "$func" >/dev/null; then
-            log_warn "\r\t❔ [$module] $action\n"
+            log_warn "\t❔ [$module] $action\n"
             continue
         fi
 
-        log_success "\r\t⏳ [$module] $action"
+        log_success "\t⏳ [$module] $action"
         "$func"
         local status=$?
         
