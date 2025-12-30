@@ -67,6 +67,14 @@ docker_uninstall() {
 
 }
 
+docker_stop() {
+    run_cmd sudo systemctl stop docker.service
+}
+
+docker_start() {
+    run_cmd sudo systemctl start docker
+}
+
 docker_upgrade() {
 
     if ! docker_verify; then
