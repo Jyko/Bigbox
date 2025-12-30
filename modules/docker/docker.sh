@@ -75,7 +75,6 @@ docker_uninstall() {
     # Suppression du repository et de la GPG Docker
     sudo rm -f /etc/apt/sources.list.d/docker.sources
     sudo rm -f /etc/apt/keyrings/docker.asc
-    apt_wrapper update
 
     # Supprimer le groupe docker
     if getent group docker >/dev/null 2>&1; then
