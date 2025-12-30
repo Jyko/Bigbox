@@ -25,16 +25,13 @@ k8s_install() {
     _k8s_tools_install
     _k8s_configuration_install
     _k8s_namespace_install
-
-    # Génération de la configuration des outils Kubernetes
-    # Installer et sourcer les aliases et de l'autocomplétion
-    # install_dotfile "kubernetes_aliases.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
-    # install_dotfile "kubernetes_autocompletion.sh" "$BB_K8S_MODULE_NAME" "$BB_K8S_MODULE_DOTFILES_DIR"
+    _k8s_dotfiles_install
     
 }
 
 k8s_uninstall() {
 
+    _k8s_dotfiles_uninstall
     _k8s_namespace_uninstall
     _k8s_configuration_uninstall
     _k8s_tools_uninstall
@@ -192,6 +189,37 @@ _k8s_namespace_uninstall() {
         # Détruit le reste des ressources persistantes que les stacks auraient laissés (PVC, PV, ...)
         kutils_kubectl_wrapper delete namespace "$BB_K8S_NAMESPACE"
     fi
+}
+
+# --------------------
+# Dotfiles
+# --------------------
+_k8s_dotfiles_install() {
+
+    # Créer les alias (et le dotfile si il n'existe pas)
+    cfg_modify_alias -k="h"         -v="helm"
+    cfg_modify_alias -k="hr"        -v="h repo update"
+    cfg_modify_alias -k="hu"        -v="h upgrade --install"
+    cfg_modify_alias -k="hl"        -v="h ls"
+    cfg_modify_alias -k="kubectl"   -v="kubecolor"
+    cfg_modify_alias -k="k"         -v="kubecolor"
+    cfg_modify_alias -k="kc"        -v="kubectx"
+    cfg_modify_alias -k="kn"        -v="kubens"
+
+}
+
+_k8s_dotfiles_uninstall() {
+
+    # Supprimer les alias (et le dotfile si il est vide)
+    cfg_modify_alias -k="h"         -v=""
+    cfg_modify_alias -k="hr"        -v=""
+    cfg_modify_alias -k="hu"        -v=""
+    cfg_modify_alias -k="hl"        -v=""
+    cfg_modify_alias -k="kubectl"   -v=""
+    cfg_modify_alias -k="k"         -v=""
+    cfg_modify_alias -k="kc"        -v=""
+    cfg_modify_alias -k="kn"        -v=""
+
 }
 
 

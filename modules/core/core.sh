@@ -48,7 +48,7 @@ export BIGBOX_DOTFILES_DIR="$BB_CFG_DOTFILES_DIR"
 # - Completions
 # - Variables d'environnement
 if [[ -d "\$BIGBOX_DOTFILES_DIR" ]]; then
-    for dotfile in "\$BIGBOX_DOTFILES_DIR/*.sh"; do
+    for dotfile in \$BIGBOX_DOTFILES_DIR/*.sh; do
         [[ -r "\$dotfile" ]] || continue
         [[ -f "\$dotfile" ]] || continue
         [[ -L "\$dotfile" ]] && continue
@@ -89,14 +89,14 @@ _core_bigbox_configuration_uninstall() {
 _core_go_configuration_install() {
     # S'assurer de la présence de l'entrée dans le PATH1
     # L'export permet de rendre Go et ses binaires disponibles aux modules suivants
-    cfg_modify_env -k="PATH" -v="PATH" -a
+    cfg_modify_env -k="PATH" -v="\$PATH" -a
     cfg_modify_env -k="PATH" -v="$BB_CORE_GO_PATH" -a
     export PATH="$PATH:$BB_CORE_GO_PATH"
 }
 
 _core_go_configuration_uninstall() {
     # Supprimer l'entrée dans le PATH
-    cfg_modify_env -k="PATH" -v="PATH" -d
+    cfg_modify_env -k="PATH" -v="\$PATH" -d
     cfg_modify_env -k="PATH" -v="$BB_CORE_GO_PATH" -d
 }
 

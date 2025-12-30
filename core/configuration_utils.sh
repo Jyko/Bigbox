@@ -141,7 +141,40 @@ cfg_modify_env() {
         cfg_set_line -p="$pattern" -l="" -f="$BB_CFG_ENV_FILE"
         fs_delete_empty_file "$BB_CFG_ENV_FILE"
     else
-        cfg_set_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -l="export $key=$new_value"
+        cfg_set_line -p="$pattern" -l="export $key=$new_value" -f="$BB_CFG_ENV_FILE"
+    fi
+
+    return 0
+
+}
+
+cfg_modify_alias() {
+    local key="" value=""
+
+    for arg in "$@"; do
+        case "$arg" in
+            -k=*) key="${arg#-k=}" ;;
+            -v=*) value="${arg#-v=}" ;;
+            *) log_error "Argument non supporté \n" && return 2 ;;
+        esac
+    done
+
+    if [[ -z "$key" ]]; then
+        log_error "Un nom d'alias est obligatoire \n" && return 2;
+    fi
+
+    fs_assure_existing_file "$BB_CFG_ALIAS_FILE"
+
+    local pattern 
+    pattern="^[[:space:]]*alias[[:space:]]+$key="
+
+    # Si la valeur est blanche, nous supprimons la ligne d'instruction dans le fichier de configuration.
+    # Sinon nous ajoutons la ligne avec la nouvelle valeur
+    if [[ -z "$value" ]]; then
+        cfg_set_line -p="$pattern" -l="" -f="$BB_CFG_ALIAS_FILE"
+        fs_delete_empty_file "$BB_CFG_ALIAS_FILE"
+    else
+        cfg_set_line -p="$pattern" -l="alias $key='$value'" -f="$BB_CFG_ALIAS_FILE"
     fi
 
     return 0
