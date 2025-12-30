@@ -54,9 +54,8 @@ _k8s_k3s_install() {
         return 0
     fi
 
-    run_cmd curl -sfL https://get.k3s.io -o /tmp/k3s-install.sh
-    run_cmd sudo sh /tmp/k3s-install.sh
-    rm -f /tmp/k3s-install.sh
+    run_cmd bash -c "curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE=644 sh -"
+
 }
 
 _k8s_k3s_uninstall() {
@@ -86,7 +85,7 @@ _k8s_tools_install() {
     apt_wrapper install kubectl kubectx helm
 
     # Kubecolor
-    wget -O /tmp/kubecolor.deb "https://kubecolor.github.io/packages/deb/pool/main/k/kubecolor/kubecolor_$(wget -q -O- https://kubecolor.github.io/packages/deb/version)_$(dpkg --print-architecture).deb"
+    run_cmd wget -O /tmp/kubecolor.deb "https://kubecolor.github.io/packages/deb/pool/main/k/kubecolor/kubecolor_$(wget -q -O- https://kubecolor.github.io/packages/deb/version)_$(dpkg --print-architecture).deb"
     apt_wrapper install /tmp/kubecolor.deb
     rm -f /tmp/kubecolor.deb
 }
@@ -120,6 +119,9 @@ _k8s_generate_unified_configuration() {
 
     # Symlink sur config.yaml, comme çà c'est propre et portable 👍
     ln -sf "$BB_K8S_UNIFIED_FILE" "$BB_K8S_STANDARD_FILE"
+
+    # Pour que les commandes kubectl, kubens, kubectx et helm suivantes rechargent la bonne configuration unifiée
+    export KUBECONFIG="$BB_K8S_STANDARD_FILE"
 
 }
 

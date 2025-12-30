@@ -106,9 +106,7 @@ module_run() {
     done
 
     if [[ "$is_reboot_wanted" == "true" ]]; then
-        log_warn "
-        \t⚠️  Ne pas oublier de redémarrer le conteneur WSL2 (Windows) ou l'OS (Ubuntu Desktop) pour la prise en compte des modifications des utilisateurs, groupes et permissions. ⚠️
-        "
+        log_warn "\r\t⚠️  Ne pas oublier de redémarrer le conteneur WSL2 (Windows) ou l'OS (Ubuntu Desktop) pour la prise en compte des modifications des utilisateurs, groupes et permissions. ⚠️\n"
     fi
     
 }
