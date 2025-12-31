@@ -31,7 +31,7 @@ if [[ $- == *i* ]]; then
     
     # bat pour remplacer cat
     alias bat='batcat'
-    alias cat='bat --style=plain --paging=never'
+    alias cat='batcat --style=plain --paging=never'
 
     # fd pour remplacer find
     alias fd='fd-find'

@@ -47,6 +47,37 @@ Si l'on souhaite, nous ajoutons la Bigbox au PATH afin de l'appeler en tant que 
 export PATH=$PATH:{chemin_vers_la}/bigbox.sh
 ```
 
+## Cheatsheet
+
+### Raccourcis
+
+| Raccourcis | Contexte    | Description                                                                   |
+| ---------- | ----------- | ----------------------------------------------------------------------------- |
+| `Ctrl + R` | Shell       | Rechercher les dernières commandes passées via la FuzzySearch                 |
+| `Ctrl + T` | Shell       | Rechercher par son nom un fichier depuis ce répertoire via la FuzzySearch     |
+| `Ctrl + F` | Shell       | Rechercher par son contenu un fichier depuis ce répertoire via la FuzzySearch |
+| `Ctrl + E` | FuzzySearch | Ouvrir le fichier selectionné dans l'éditeur configuré (`$EDITOR`)            |
+| `Enter`    | FuzzySearch | Ecrire le chemin du fichier selectionné dans le Shell                         |
+
+### Alias
+
+| Alias     | Commande    | Description                                                         |
+| --------- | ----------- | ------------------------------------------------------------------- |
+| `ls`      | `eza`       | Remplaçant de `ls`                                                  |
+| `lt`      | `eza`       | L'arborescence de fichier sur 3 niveaux de profondeurs              |
+| `ll`      | `eza`       | Remplaçant light de `ll`                                            |
+| `lll`     | `eza`       | Remplaçant complet de `ll`                                          |
+| `bat`     | `batcat`    | `batcat` en plus court                                              |
+| `cat`     | `batcat`    | Remplaçant de `cat` (100% compatible)                               |
+| `fd`      | `fd-find`   | `fd-find` en plus court                                             |
+| `k`       | `kubecolor` | `kubectl` mais avec de la couleur, plus court et 100% compatible    |
+| `kubectl` | `kubecolor` | Remplaçcant de `kubectl` mais avec de la couleur et 100% compatible |
+| `kn`      | `kubens`    | `kubens` en plus court                                              |
+| `kc`      | `kubectx`   | `kubectx` en plus court                                             |
+| `h`       | `helm`      | `helm` en plus court                                                |
+| `hr`      | `helm`      | `helm repo update` en plus court                                    |
+| `hu`      | `helm`      | `helm upgrade --install` en plus court                              |
+
 ## Modules
 
 ### System
@@ -192,7 +223,7 @@ Le module Quality of Life :
 | [fd](https://github.com/sharkdp/fd)              | Remplace `find`                                           |
 | [fzf](https://github.com/jqlang/jq)              | Manipule du JSON                                          |
 | [fzf](https://github.com/junegunn/fzf)           | Réalise des fuzzy search (recherche full-text à la volée) |
-| [ripgrep](https://github.com/BurntSushi/ripgrep) | Remplace grep                                             |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) | Remplace `grep`                                           |
 
 - Crée des alias et des raccourcis utiles
 - Charge des scripts d'autocomplétion pour certains packages installés

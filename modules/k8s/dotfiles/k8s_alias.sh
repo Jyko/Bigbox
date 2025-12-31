@@ -5,7 +5,6 @@
 alias h='helm'
 alias hr='h repo update'
 alias hu='h upgrade --install'
-alias hl='h ls'
 
 # Aliases pour `Kubecolor`
 alias kubectl='kubecolor'
