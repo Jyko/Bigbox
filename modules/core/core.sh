@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
+BB_CORE_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BB_CORE_MODULE_DOTFILES_DIR="$BB_CORE_MODULE_BASE_DIR/dotfiles"
 BB_CORE_GO_PATH="$HOME/go/bin"
 
 # Liste des packages obligatoires pour le fonctionnement de la Bigbox
@@ -88,17 +90,16 @@ _core_bigbox_configuration_uninstall() {
 }
 
 _core_go_configuration_install() {
-    # S'assurer de la présence de l'entrée dans le PATH1
+    
+    cfg_copy_dotfile "$BB_CORE_MODULE_DOTFILES_DIR/core_env.sh"
+    
     # L'export permet de rendre Go et ses binaires disponibles aux modules suivants
-    cfg_modify_env -k="PATH" -v="\$PATH" -a
-    cfg_modify_env -k="PATH" -v="$BB_CORE_GO_PATH" -a
     export PATH="$PATH:$BB_CORE_GO_PATH"
 }
 
 _core_go_configuration_uninstall() {
     # Supprimer l'entrée dans le PATH
-    cfg_modify_env -k="PATH" -v="\$PATH" -d
-    cfg_modify_env -k="PATH" -v="$BB_CORE_GO_PATH" -d
+    cfg_delete_dotfile "core_env.sh"
 }
 
 # core_upgrade() { }

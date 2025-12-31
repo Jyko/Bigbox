@@ -198,6 +198,7 @@ _k8s_dotfiles_install() {
 
     cfg_copy_dotfile "$BB_K8S_MODULE_DOTFILES_DIR/k8s_alias.sh"
     cfg_copy_dotfile "$BB_K8S_MODULE_DOTFILES_DIR/k8s_completion.sh"
+    cfg_copy_dotfile "$BB_K8S_MODULE_DOTFILES_DIR/k8s_env.sh"
 
 }
 
@@ -205,6 +206,7 @@ _k8s_dotfiles_uninstall() {
 
     cfg_delete_dotfile "k8s_alias.sh"
     cfg_delete_dotfile "k8s_completion.sh"
+    cfg_delete_dotfile "k8s_env.sh"
 
 }
 
