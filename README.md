@@ -58,8 +58,9 @@ export PATH=$PATH:{chemin_vers_la}/bigbox.sh
 | `Ctrl + F` | Shell       | Rechercher par son contenu un fichier depuis ce répertoire via la FuzzySearch |
 | `Ctrl + E` | FuzzySearch | Ouvrir le fichier selectionné dans l'éditeur configuré (`$EDITOR`)            |
 | `Enter`    | FuzzySearch | Ecrire le chemin du fichier selectionné dans le Shell                         |
+| `Ctrl + Q` | FuzzySearch | Quitter la FuzzySearch et revenir au Shell                                    |
 
-### Alias
+### Aliases
 
 | Alias     | Commande    | Description                                                         |
 | --------- | ----------- | ------------------------------------------------------------------- |

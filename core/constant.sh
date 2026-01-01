@@ -24,3 +24,6 @@ BB_K8S_NAMESPACE=bigbox
 
 # SSH
 BB_SSH_DIR=$HOME/.ssh/bigbox
+
+# Starship
+BB_STARSHIP_CONFIG_FILE="$HOME/.config/starship.toml"
