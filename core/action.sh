@@ -43,8 +43,8 @@ action_get_property() {
     fi
 
     jq -r \
-    --arg a "$ACTION" \
-    --arg p "$property" \
-    --arg d "$default_value" \
-    '.[$a][$p] // $d' <<< "$BB_ACTION_CONFIG"
+        --arg a "$ACTION" \
+        --arg p "$property" \
+        --arg d "$default_value" \
+        '.[$a][$p] // $d' <<< "$BB_ACTION_CONFIG"
 }
