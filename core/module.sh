@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 
 # Liste des modules chargés ordonnée par priorité d'exécution
-declare -A MODULES
+declare -A MODULES=()
 
 module_load() {
 
@@ -39,6 +39,10 @@ module_load() {
 
     # Chargement terminé, nous passons la variable globale MODULES en readonly, nous n'avons plus aucune raison de la modifier à partir de maintenant.
     readonly MODULES
+
+    if (( ${#MODULES[@]} == 0 )); then
+        log_warn "\r\t❗ Aucun module chargé, vérifiez la compatibilité des modules listés avec l'action demandée\n"
+    fi
 
 }
 

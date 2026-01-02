@@ -12,7 +12,7 @@ action_is_valid() {
         log_debug "L'action $action est valide\n"
         return 0
     else
-        log_debug "tL'action $action n'est pas une action valide configurée\n"
+        log_debug "L'action $action n'est pas une action valide configurée\n"
         return 1
     fi
 }
