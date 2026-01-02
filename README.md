@@ -14,37 +14,37 @@ Pour le reste des pré-requis des outils, la Bigbox est autonome et saura instal
 
 ## Usage
 
-Une fois le projet récupéré sur la distribution cible via un `git clone`, nous rendons le script `./bigbox.sh` executable :
+Une fois le projet récupéré sur la distribution cible via un `git clone`, nous rendons le script `./bigbox` executable :
 
 ```sh
-chmod +x ./bigbox.sh
+chmod +x ./bigbox
 ```
 
 Nous lançons ensuite l'installation de la Bigbox :
 
 ```sh
-./bigbox.sh install
+./bigbox install
 ```
 Nous désinstallons la Bigbox :
 
 ```sh
-./bigbox.sh uninstall
+./bigbox uninstall
 ```
 
 Nous éteignons les outils dont nous ne nous servons pas pour libérer des ressources :
 ```sh
-./bigbox.sh stop
+./bigbox stop
 ```
 
 Nous rallumons les outils :
 ```sh
-./bigbox.sh start
+./bigbox start
 ```
 
 Si l'on souhaite, nous ajoutons la Bigbox au PATH afin de l'appeler en tant que commande :  
 >.bashrc
 ```sh
-export PATH=$PATH:{chemin_vers_la}/bigbox.sh
+export PATH=$PATH:{chemin_vers_la}/bigbox
 ```
 
 ## Cheatsheet
