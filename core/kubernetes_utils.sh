@@ -171,17 +171,25 @@ kutils_release_stop() {
         return 2
     fi
 
+    local kind="deployments"
     local selector="app.kubernetes.io/instance=${release_name},app.kubernetes.io/name=${chart_name}"
 
-    # Passage des replicas à 0 pour libérer les ressources
-    for kind in deployment statefulset; do
+    mapfile -t resources < <(
+        kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" get "$kind" \
+            -l "$selector" \
+            -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+            2>/dev/null
+    )
+
+    if (( ${#resources[@]} == 0 )); then
+        log_warn "Aucun $kind trouvé pour le selector [$selector]"
+    else
+        # Passage des replicas à 0 pour libérer les ressources
         for name in $(kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" get "$kind" -l "$selector" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null); do
+            log_debug "Scaling $kind/$name to 0"
             kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" scale "$kind/$name" --replicas=0 || true
         done
-    done
-
-    # Supprimer les pods restants pour libérer les ressources immédiatement
-    kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" delete pods -l "$selector" --wait=true --ignore-not-found || true
+    fi
 
     return 0
 }

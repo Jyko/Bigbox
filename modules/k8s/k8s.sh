@@ -59,7 +59,8 @@ _k8s_k3s_uninstall() {
 
     # Désinstaller k3s via son script, me demandez pas ce que çà fait, j'en sais rien :DDD
     if _k8s_k3s_verify; then
-        run_cmd sudo "$BB_K8S_K3S_UNINSTALL_SCRIPT"
+        # Nous dégageons des services inutiles pour nous (LB et DNS)
+        run_cmd sudo "$BB_K8S_K3S_UNINSTALL_SCRIPT" --disable servicelb --disable traefik
     fi
 }
 
