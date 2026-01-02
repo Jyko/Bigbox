@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
 ################################
 # Utilitaires communs pour SSH #
 ################################
@@ -30,8 +33,10 @@ ssh_generate_key() {
 
     ssh_verify_directory
 
-    local private_key_path=$(ssh_get_key_path "$key_name")
-    local public_key_path=$(ssh_get_key_path "$key_name.pub")
+    local private_key_path public_key_path
+
+    private_key_path=$(ssh_get_key_path "$key_name")
+    public_key_path=$(ssh_get_key_path "$key_name.pub")
 
     # Si au moins l'une des clés de la paire est manquante, nous effaçons et regénérons une paire complète.
     if [[ ! -f "$private_key_path" || ! -f "$public_key_path" ]]; then
@@ -51,8 +56,10 @@ ssh_delete_key() {
         exit 1
     fi
 
-    local private_key_path=$(ssh_get_key_path "$key_name")
-    local public_key_path=$(ssh_get_key_path "$key_name.pub")
+    local private_key_path public_key_path
+
+    private_key_path=$(ssh_get_key_path "$key_name")
+    public_key_path=$(ssh_get_key_path "$key_name.pub")
 
     rm -f "$$private_key_path" "$$public_key_path"
 }

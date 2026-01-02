@@ -1,30 +1,34 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
-# =============================================
-# Utilitaires communs pour la gestion des LOGS
-# =============================================
+# --------------------
+# Utilitaires communs de gestion de Logs
+# --------------------
 
-# ====================
+# --------------------
 # Définition des niveaux de logs
-# ====================
+# --------------------
 readonly LOG_DEBUG=0
 readonly LOG_INFO=1
 readonly LOG_SILENT=2
 
 # Niveau de log courant
 LOG_LEVEL="$LOG_INFO"
+CONFIGURATION_ALREADY_SET=0
 
-# ====================
+# --------------------
 # Gestion du niveau de logs
-# ====================
-log_set_silent() { LOG_LEVEL="$LOG_SILENT" ; }
-log_set_info() { LOG_LEVEL="$LOG_INFO" ; }
-log_set_debug() { LOG_LEVEL="$LOG_DEBUG" ; }
+# --------------------
+log_set_silent() { _is_log_level_not_configured && LOG_LEVEL="$LOG_SILENT" && CONFIGURATION_ALREADY_SET=1 ; }
+log_set_info() { _is_log_level_not_configured && LOG_LEVEL="$LOG_INFO" && CONFIGURATION_ALREADY_SET=1 ; }
+log_set_debug() { _is_log_level_not_configured && LOG_LEVEL="$LOG_DEBUG" && CONFIGURATION_ALREADY_SET=1 ; }
 
-# ====================
-# Fonctions
-# ====================
+_is_log_level_not_configured() {
+    if (( CONFIGURATION_ALREADY_SET )); then
+        printf "\033[31mLe niveau de log est configuré au moins deux fois\n\033[0m\n" >&2
+        exit 2
+    fi
+}
 
 # Retourner 0 si ce niveau de log est au moins égal au niveau de log courant de l'application, sinon retourne 1.
 # -l|--level    : Le niveau à tester contre le niveau de log courant
@@ -34,7 +38,7 @@ _log_is_at_least() {
     for arg in "$@"; do
         case "$arg" in
             -l=*) level="${arg#*=}" ;;
-            *) printf "\033[31mArgument non supporté \n\033[0m\n" >&2 && return 2 ;;
+            *) printf "\033[31mArgument non supporté\033[0m\n" >&2 && return 2 ;;
         esac
     done
 
@@ -50,6 +54,23 @@ _log_is_at_least() {
 log_is_debug() { _log_is_at_least -l="$LOG_DEBUG" || return 1 ; }
 log_is_info() { _log_is_at_least -l="$LOG_INFO" || return 1 ; }
 log_is_silent() { _log_is_at_least -l="$LOG_SILENT" || return 1 ; }
+
+# --------------------
+# Création de message de logs
+# --------------------
+
+# Afficher un message de log d'une certaine typologie.
+# Chaque à son niveau de déclenchement et son format propre.
+# DEBUG     : Gris      uniquement en niveau DEBUG
+# INFO      : Blanc     toujours sauf en SILENT
+# SUCCESS   : Vert      toujours sauf en SILENT
+# WARN      : Jaune     toujours sauf en SILENT
+# ERROR     : Rouge     toujours y compris en SILENT
+log_debug() { _log_msg -c="90" -l="$LOG_DEBUG" "$@" ; }
+log_info() { _log_msg "$@" ; }
+log_success() { _log_msg -c="32" "$@" ; }
+log_warn() { _log_msg -c="33" "$@" ; }
+log_error() { _log_msg -c="31" -l="$LOG_SILENT" "$@" ; }
 
 _log_msg() {
     local color=""
@@ -79,18 +100,4 @@ _log_msg() {
     fi
 
     printf "%b%b%b" "$prefix" "$message" "$suffix" >&2
-
 }
-
-# Afficher un message de log d'une certaine typologie.
-# Chaque à son niveau de déclenchement et son format propre.
-# DEBUG     : Gris      uniquement en niveau DEBUG
-# INFO      : Blanc     toujours sauf en SILENT
-# SUCCESS   : Vert      toujours sauf en SILENT
-# WARN      : Jaune     toujours sauf en SILENT
-# ERROR     : Rouge     toujours y compris en SILENT
-log_debug() { _log_msg -c="90" -l="$LOG_DEBUG" "$@" ; }
-log_info() { _log_msg "$@" ; }
-log_success() { _log_msg -c="32" "$@" ; }
-log_warn() { _log_msg -c="33" "$@" ; }
-log_error() { _log_msg -c="31" -l="$LOG_SILENT" "$@" ; }

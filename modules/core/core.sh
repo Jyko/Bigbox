@@ -1,22 +1,38 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
-# METADATA du module
-MODULE_NAME="core"
-MODULE_PRIORITY=0
-
+BB_CORE_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BB_CORE_MODULE_DOTFILES_DIR="$BB_CORE_MODULE_BASE_DIR/dotfiles"
 BB_CORE_GO_PATH="$HOME/go/bin"
 
 # Liste des packages obligatoires pour le fonctionnement de la Bigbox
 BB_CORE_PACKAGES=(
+    bash-completion
     ca-certificates
     curl
     golang-go
     jq
     shellcheck
+    yq
+    wget
 )
 
-_core_bigbox_configuration() {
+core_install() {
+
+    _core_bigbox_configuration_install
+
+    apt_wrapper install "${BB_CORE_PACKAGES[@]}"
+
+    _core_go_configuration_install
+}
+
+core_uninstall() {
+    # Les packages ne sont pas désinstallés, seulement les configurations
+    _core_go_configuration_uninstall
+    _core_bigbox_configuration_uninstall
+}
+
+_core_bigbox_configuration_install() {
 
     # Assurer la création des répertoires de configuration de la Bigbox
     mkdir -p "$BB_CFG_DIR"
@@ -35,7 +51,7 @@ export BIGBOX_DOTFILES_DIR="$BB_CFG_DOTFILES_DIR"
 # - Completions
 # - Variables d'environnement
 if [[ -d "\$BIGBOX_DOTFILES_DIR" ]]; then
-    for dotfile in "\$BIGBOX_DOTFILES_DIR/*.sh"; do
+    for dotfile in \$BIGBOX_DOTFILES_DIR/*.sh; do
         [[ -r "\$dotfile" ]] || continue
         [[ -f "\$dotfile" ]] || continue
         [[ -L "\$dotfile" ]] && continue
@@ -60,7 +76,7 @@ EOF
 
 }
 
-_core_bigbox_unconfiguration() {
+_core_bigbox_configuration_uninstall() {
 
     # Suppresion de toute la configuration Bigbox initiale !
     # FIXME: Les désinstallations de modules devraient se jouer dans l'ordre inverse.
@@ -73,44 +89,15 @@ _core_bigbox_unconfiguration() {
         -f="$HOME/.bashrc"
 }
 
-_core_go_configuration() {
-    # S'assurer de la présence de l'entrée dans le PATH1
+_core_go_configuration_install() {
+    
+    cfg_copy_dotfile "$BB_CORE_MODULE_DOTFILES_DIR/core_env.sh"
+    
     # L'export permet de rendre Go et ses binaires disponibles aux modules suivants
-    cfg_modify_env -k="PATH" -v="PATH" -a
-    cfg_modify_env -k="PATH" -v="$BB_CORE_GO_PATH" -a
     export PATH="$PATH:$BB_CORE_GO_PATH"
 }
 
-_core_go_unconfiguration() {
+_core_go_configuration_uninstall() {
     # Supprimer l'entrée dans le PATH
-    cfg_modify_env -k="PATH" -v="PATH" -d
-    cfg_modify_env -k="PATH" -v="$BB_CORE_GO_PATH" -d
-}
-
-core_install() {
-
-    _core_bigbox_configuration
-
-    apt_wrapper install "${BB_CORE_PACKAGES[@]}"
-
-    _core_go_configuration
-}
-
-core_uninstall() {
-
-    # Nous ne désinstallons pas les packages Cores à date
-    # On conserve Golang et sa configuration
-    # apt_wrapper remove "${BB_CORE_PACKAGES[@]}"
-    # _core_go_unconfiguration
-
-    _core_bigbox_unconfiguration
-}
-
-core_upgrade() {
-
-    _core_bigbox_configuration
-
-    apt_wrapper update && apt_wrapper install --only-upgrade "${BB_CORE_PACKAGES[@]}"
-
-    _core_go_configuration
+    cfg_delete_dotfile "core_env.sh"
 }

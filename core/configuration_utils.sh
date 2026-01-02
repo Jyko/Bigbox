@@ -93,8 +93,6 @@ _cfg_env_get_value() {
     # Récupération de la ligne de configuration correspondant à l'export de la variable
     line=$(cfg_get_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -s) || { return $? ; }
 
-    log_debug "line=$line \n"
-
     # Extraction de la valeur
     echo "${line#*=}"
     
@@ -130,8 +128,6 @@ cfg_modify_env() {
     pattern="^[[:space:]]*export[[:space:]]+$key="
     current_value="$(_cfg_env_get_value -k="$key" || true)"
 
-    log_debug "\n\nvalue=$value \ncurrent_value=$current_value \n"
-
     case "$mode" in
         a) new_value=$(list_append -l="$current_value" -v="$value") ;;
         r) new_value="$value" ;;
@@ -139,17 +135,40 @@ cfg_modify_env() {
         *) log_error "Erreur mode inconnu \n" && return 2 ;;
     esac
 
-    log_debug "value=$value \ncurrent_value=$current_value \nnew_value=$new_value \n"
-
     # Si la nouvelle valeur est blanche à la suite de l'application des modifications, nous supprimons la ligne d'instruction dans le fichier de configuration.
     # Sinon nous ajoutons la ligne avec la nouvelle valeur
     if [[ -z "$new_value" ]]; then
         cfg_set_line -p="$pattern" -l="" -f="$BB_CFG_ENV_FILE"
         fs_delete_empty_file "$BB_CFG_ENV_FILE"
     else
-        cfg_set_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -l="export $key=$new_value"
+        cfg_set_line -p="$pattern" -l="export $key=$new_value" -f="$BB_CFG_ENV_FILE"
     fi
 
     return 0
 
+}
+
+cfg_copy_dotfile() {
+    local file="${1:-}"
+
+    if [[ -z "$file" || ! -f "$file" ]]; then
+        log_error "Un chemin de fichier dotfile à copier est obligatoire \n" && return 2;
+    fi
+
+    cp "$file" "$BB_CFG_DOTFILES_DIR/$(basename "$file")"
+}
+
+cfg_delete_dotfile() {
+    local file="${1:-}"
+
+    if [[ -z "$file" ]]; then
+        log_error "Le nom du dotfile à supprimer est obligatoire \n" && return 2;
+    fi
+
+    local path
+    path="$BB_CFG_DOTFILES_DIR/$file"
+
+    if [[ -f "$path" ]]; then
+        rm -f "$path"
+    fi
 }

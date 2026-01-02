@@ -47,23 +47,200 @@ Si l'on souhaite, nous ajoutons la Bigbox au PATH afin de l'appeler en tant que 
 export PATH=$PATH:{chemin_vers_la}/bigbox.sh
 ```
 
-## Outils
+## Cheatsheet
 
-La Bigbox installe deux types d'outils :
-- Des utilitaires linux pour un usage plus aisé de la distribution Ubuntu (ex: *yazi, eza, bat ...*)
-- Des outils de développement lourd, utilisé comme dépendances externes par nos applications (ex: *NATS, PostgreSQL ...*)
+### Raccourcis
 
-Nous ne ferons ici que la liste des outils de développement.
+| Raccourcis | Contexte    | Description                                                                   |
+| ---------- | ----------- | ----------------------------------------------------------------------------- |
+| `Ctrl + R` | Shell       | Rechercher les dernières commandes passées via la FuzzySearch                 |
+| `Ctrl + T` | Shell       | Rechercher par son nom un fichier depuis ce répertoire via la FuzzySearch     |
+| `Ctrl + F` | Shell       | Rechercher par son contenu un fichier depuis ce répertoire via la FuzzySearch |
+| `Ctrl + E` | FuzzySearch | Ouvrir le fichier selectionné dans l'éditeur configuré (`$EDITOR`)            |
+| `Enter`    | FuzzySearch | Ecrire le chemin du fichier selectionné dans le Shell                         |
+| `Ctrl + Q` | FuzzySearch | Quitter la FuzzySearch et revenir au Shell                                    |
 
-| Outil | Mode | Port d'accès | Infos utiles |
-| --- | --- | --- | --- |
-| GoLang | package | N/A | SDK GoLang pour compiler des binaires depuis leurs sources |
-| Docker | package | N/A | Moteur de conteneurisation, installé selon les préconisations de la documentation officielle |
-| Kubernetes | script | N/A | Orchestrateur de conteneur, installé et managé par `k3s` via les scripts de la documentation officielle |
-| PostgreSQL | Helm | `30001` | SGBDR |
-| Nats JetStream | Helm | Client:`30010` Monitoring:`30011` | Broker message |
-| NUI | Helm | `30012` | Client web pour NATS préconfiguré avec le contexte du NATS local |
-| SFTP | Helm | `30020` | Serveur SFTP |
+### Aliases
+
+| Alias     | Commande    | Description                                                         |
+| --------- | ----------- | ------------------------------------------------------------------- |
+| `ls`      | `eza`       | Remplaçant de `ls`                                                  |
+| `lt`      | `eza`       | L'arborescence de fichier sur 3 niveaux de profondeurs              |
+| `ll`      | `eza`       | Remplaçant light de `ll`                                            |
+| `lll`     | `eza`       | Remplaçant complet de `ll`                                          |
+| `bat`     | `batcat`    | `batcat` en plus court                                              |
+| `cat`     | `batcat`    | Remplaçant de `cat` (100% compatible)                               |
+| `fd`      | `fd-find`   | `fd-find` en plus court                                             |
+| `k`       | `kubecolor` | `kubectl` mais avec de la couleur, plus court et 100% compatible    |
+| `kubectl` | `kubecolor` | Remplaçcant de `kubectl` mais avec de la couleur et 100% compatible |
+| `kn`      | `kubens`    | `kubens` en plus court                                              |
+| `kc`      | `kubectx`   | `kubectx` en plus court                                             |
+| `h`       | `helm`      | `helm` en plus court                                                |
+| `hr`      | `helm`      | `helm repo update` en plus court                                    |
+| `hu`      | `helm`      | `helm upgrade --install` en plus court                              |
+
+## Modules
+
+### System
+
+Le module System :
+- Vérifie les pré-requis système de l'environnement d'execution de la Bigbox
+- Active `systemd` si celui-ci ne l'est pas
+
+### Core
+
+Le module Core :
+
+- Installe les packages suivants :
+
+| Package                                                             | Infos utiles                                                                     |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [bash-completion](https://github.com/scop/bash-completion)          | Autocomplète les commandes qui disposent d'un script d'autocomplétion enregistré |
+| [curl](https://github.com/curl/curl)                                |                                                                                  |
+| [golang](https://github.com/golang/go)                              | Le path d'installation des binaires ($HOME/go/bin) est ajouté au PATH            |
+| [jq](https://github.com/jqlang/jq)                                  | Manipule du JSON                                                                 |
+| [shellcheck](https://github.com/koalaman/shellcheck)                | Linter bash                                                                      |
+| [yq](https://github.com/mikefarah/yq)                               | Manipule du YAML (même contrat que jq)                                           |
+| [wget](https://manpages.ubuntu.com/manpages/focal/man1/wget.1.html) |                                                                                  |
+
+- Exporte `$HOME/go/bin` dans le `PATH` du `$USER`
+
+### Docker
+
+Le module Docker :
+- Installe `docker-ce` et ses dépendances
+- Crée la configuration nécessaire pour que le `$USER` puisse utiliser `docker` sans sudoer
+- Assure le lancement des services `docker` et `containerd`
+
+### K8S
+
+Le module K8S :
+- Installe `k3s` et son cluster Kubernetes `bigbox`
+- Installe `kubectl`, `kubens`, `kubectx`, `kubecolor` et les alias et autocomplétions liés
+- Crée une configuration unifiée Kubernetes respectueuse des contextes déjà existants
+- Crée un namespace `bigbox` dans le cluster `bigbox`
+
+#### TL;DR ?
+
+| Key         | Valeur      |
+| ----------- | ----------- |
+| `hostname`  | `localhost` |
+| `port`      | `6443`      |
+| `context`   | `bigbox`    |
+| `namespace` | `bigbox`    |
+
+### PG
+
+Le module PG :
+- Déploye une stack `bigbox-pg` dans le cluster `bigbox` et le namespace `bigbox`
+- Installe les packages suivants :
+
+| Package                                                                              | Infos utiles                                                        |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| [postgresql-client-{version}](https://www.postgresql.org/docs/current/app-psql.html) | Client psql standard de même version majeure que le serveur déployé |
+
+La version majeure actuelle de PostgreSQL utilisée est la 17. Dans le futur, un paramétrage sera possible afin de pouvoir contrôler la version désirée.
+La PostgreSQL installée l'est en single-node. Elle est accessible par défaut avec la paire user|pwd `bigbox`. Dans le futur, cette authentification sera déportée vers un secret-manager.
+La database par défaut est la `bigbox` et le schéma `public`. Le volume de persistance est limité à `1Gi` pour les phases d'alpha/beta, mais risque de vite passer à `4Gi` pour la release.
+
+#### TL;DR ?
+
+```sh
+SPRING_DATASOURCE_URL=jdbc:posgresql://localhost:30001/bigbox
+SPRING_DATASOURCE_USERNAME=bigbox
+SPRING_DATASOURCE_PASSWORD=bigbox
+```
+
+| Key        | Valeur      |
+| ---------- | ----------- |
+| `hostname` | `localhost` |
+| `port`     | `30001`     |
+| `username` | `bigbox`    |
+| `password` | `bigbox`    |
+| `database` | `bigbox`    |
+
+### NATS
+
+Le module NATS :
+- Déploye une stack `bigbox-nats` dans le cluster `bigbox` et le namespace `bigbox`
+- Installe le binaire go `nats-cli`
+- Crée un contexte de connexion pour la `nats-cli` et l'instance `nui` future
+
+Le NATS est déployé en single node en mode JetStream (flag `-js`). Le volume de persistence est limité à `1Gi` se qui devrait être suffisant.
+Il est possible que certains messages publiés soient trop volumineux pour la configuration de base du NATS. Nous ajusterons en phase de beta.
+
+#### TL;DR ?
+
+```sh
+NATS_SERVER_URLS=nats://localhost:30010
+```
+
+| Key               | Valeur      |
+| ----------------- | ----------- |
+| `hostname`        | `localhost` |
+| `port` client     | `30010`     |
+| `port` monitoring | `30011`     |
+
+### SFTP
+
+Le module SFTP :
+- Crée une pair de clés SSH `$HOME/.ssh/bigbox/bigbox-sftp` sans passphrase
+- Déploye une stack `bigbox-sftp` dans le cluster `bigbox` et le namespace `bigbox`
+- Configure le volume de persistence pour que le user `bigbox` ai les permissions suffisantes pour écrire et lire dessus
+
+#### TL;DR ?
+
+```sh
+sftp -i "$HOME/.ssh/bigbox/bigbox-sftp" bigbox@localhost:30020/upload
+```
+
+| Key         | Valeur                          |
+| ----------- | ------------------------------- |
+| `hostname`  | `localhost`                     |
+| `directory` | `upload`                        |
+| `port`      | `30020`                         |
+| `user`      | `bigbox`                        |
+| `ssh key`   | `$HOME/.ssh/bigbox/bigbox-sftp` |
+
+### NUI
+
+Le module NUI :
+- Déploye une stack `bigbox-nui` dans le cluster `bigbox` et le namespace `bigbox`
+- Importe le contexte du NATS Bigbox
+
+#### TL;DR ?
+
+[NUI en local](http://localhost:30012/)
+
+### QOL
+
+Le module Quality of Life :
+- Installe les packages suivants :
+
+| Package                                          | Infos utiles                                              |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| [bat](https://github.com/sharkdp/bat)            | Remplace `cat`                                            |
+| [eza](https://github.com/eza-community/eza)      | Remplace `ls`                                             |
+| [fd](https://github.com/sharkdp/fd)              | Remplace `find`                                           |
+| [fzf](https://github.com/jqlang/jq)              | Manipule du JSON                                          |
+| [fzf](https://github.com/junegunn/fzf)           | Réalise des fuzzy search (recherche full-text à la volée) |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) | Remplace `grep`                                           |
+
+- Crée des alias et des raccourcis utiles
+- Charge des scripts d'autocomplétion pour certains packages installés
+- Exporte des variables d'environnement utiles
+
+#### TL;DR ?
+
+Va voir [la cheatsheet](#cheatsheet)
+
+
+### Catppucin
+
+Le module de la malveillance extrême :
+- Colorise **TOUT**
+
+:sdk: Et si t'aimes pas, je m'en fous :sdk:
 
 ## Principes et Architecture
 

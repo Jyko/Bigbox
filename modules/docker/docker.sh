@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
-# METADATA du module
-MODULE_NAME="docker"
-MODULE_PRIORITY=100
-
+# Packages gérés
 BB_DOCKER_PACKAGES=(
     docker-ce
     docker-ce-cli
@@ -14,11 +11,27 @@ BB_DOCKER_PACKAGES=(
     docker-ce-rootless-extras
 )
 
+# Packages conflictuels désinstallés
+BB_DOCKER_CONFLICT_PACKAGES=(
+    docker.io
+    docker-compose
+    docker-compose-v2
+    docker-doc
+    podman-docker
+    containerd
+    runc
+)
+
 # Installer Docker
 docker_install() {
 
     # Désinstaller les paquets qui pourraient entrer en conflit
-    apt_wrapper remove docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc
+    apt_wrapper purge "${BB_DOCKER_CONFLICT_PACKAGES[@]}" || true
+
+    # Nous vérifions après la purge des packages conflictuels si docker est bien installé
+    if _docker_verify; then
+        return 0
+    fi
 
     # Ajout de la clef GPG Docker
     sudo install -m 0755 -d /etc/apt/keyrings
@@ -50,7 +63,10 @@ EOF
 
 docker_uninstall() {
 
-    apt_wrapper purge "${BB_DOCKER_PACKAGES[@]}"
+    # Pas besoin de verify, tout est idempotent dans les commandes de suppression
+
+    # Nous supprimons les packages installés et les potentiels packages à conflit pour qu'une future installation se fasse sur des bases saines
+    apt_wrapper purge "${BB_DOCKER_PACKAGES[@]}" "${BB_DOCKER_CONFLICT_PACKAGES[@]}" || true
 
     # Suppression des images, conteneurs, volumes ...
     sudo rm -rf /var/lib/docker
@@ -67,26 +83,14 @@ docker_uninstall() {
 
 }
 
-docker_stop() {
-    run_cmd sudo systemctl stop docker.service
-}
-
-docker_start() {
-    run_cmd sudo systemctl start docker
-}
-
-docker_upgrade() {
-
-    if ! docker_verify; then
-        docker_install
-    else
-        apt_wrapper update && \
-            apt_wrapper install --only-upgrade "${BB_DOCKER_PACKAGES[@]}"
-    fi
-}
-
-docker_verify() {
-
+_docker_verify() {
     command -v docker >/dev/null 2>&1
-
 }
+
+# Les upgrades sont à réfléchir, les stratégies de verify/upgrade ou de uninstall/install sont à méditer
+# docker_upgrade() { return 0 ;}
+
+# Trop d'effet de bord à arrêter les services docker et containerd, c'est ultra-galère à redémarrer à la main.
+# Pour les quelques Mo de RAM que çà bouffe, on va pas pinailler. Et çà permet d'éviter l'overhead lors d'un réveil de docker.
+# docker_stop() { return 0 ; }
+# docker_start() { return 0 ; }

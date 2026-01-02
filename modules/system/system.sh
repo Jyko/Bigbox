@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 
-# METADATA du module
-MODULE_NAME="system"
-MODULE_PRIORITY=-100
-
 # Version minimale d'Ubuntu compatible avec la BigBox
 BB_SYSTEM_UBUNTU_MIN_VERSION=24
 BB_SYSTEM_WSL_CONF_PATH="/etc/wsl.conf"
@@ -72,4 +68,7 @@ EOF
     fi
 
 }
+
+# Il n'est pas prévu de désinstaller/déconfigurer systemctl
+# system_uninstall() { return 0 ; }
 

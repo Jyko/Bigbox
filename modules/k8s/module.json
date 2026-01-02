@@ -1,0 +1,7 @@
+{
+    "name": "k8s",
+    "description": "Gestion du cluster Kubernetes, de sa configuration et des outils associés (kubectl, kubectx, helm ...)",
+    "priority": 200,
+    "entrypoint": "k8s.sh",
+    "actions": ["install", "uninstall"]
+}

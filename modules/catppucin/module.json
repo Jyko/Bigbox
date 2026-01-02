@@ -1,0 +1,7 @@
+{
+    "name": "catppucin",
+    "description": "Le module de la malveillance max, installation de Catppucin partout",
+    "priority": 1001,
+    "entrypoint": "catppucin.sh",
+    "actions": ["install", "uninstall"]
+}

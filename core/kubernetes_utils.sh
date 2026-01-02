@@ -54,6 +54,11 @@ kutils_helm_wrapper() {
 
 kutils_is_api_available() {
 
+    if ! command -v kubectl >/dev/null 2>&1; then
+        log_warn "kubectl n'est pas installé \n" ;
+        return 1
+    fi
+
     # Check rapide pour voir si l'API Kubernetes du cluster Bigbox est joignable
     if ! run_cmd kutils_kubectl_wrapper get node; then
         log_warn "L'API Kubernetes n'est pas joignable \n"
