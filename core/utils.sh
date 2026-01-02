@@ -58,3 +58,97 @@ apt_wrapper() {
         run_cmd sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq -o=Dpkg::Use-Pty=0 "$@" </dev/null >/dev/null 2>&1
     fi
 }
+
+parse_args() {
+
+    # --------------------
+    # Action
+    # --------------------
+
+    # Nous affichons l'aide si l'utilisateur :
+    # - Ne fourni pas d'action
+    # - Ne fourni pas une action valide
+    if [[ $# -eq 0 ]]; then
+        return 1
+    fi
+
+    # Si c'est un flag global, on ne déclenche pas de test ou d'erreur et on poursuit
+    # Sinon on considère que çà doit être une commande
+    case "$1" in
+        -s|--silent|-d|--debug|-h|--help|-v|--version|-b|--banner|--ee|--easter-eggs|-m|--module)
+            ;;
+        *)
+            if ! action_is_valid "$1"; then
+                log_error "\r\t❌ \"$1\" n'est pas une action valide\n"
+            else
+                ACTION="$1"
+            fi
+            
+            # Nous retirons l'action (valide ou non) des params restants à parser, il ne doit reste que des options
+            shift 
+            ;;
+    esac
+
+    # --------------------
+    # Options
+    # --------------------
+    # Nous parsons le reste des arguments qui doivent être uniquement des options connues et valides
+    while [[ $# -gt 0 ]]; do
+
+        # Si le paramètre est un flag connu
+        case "$1" in
+            -s|--silent)
+                log_set_silent
+                shift
+                ;;
+            -d|--debug)
+                log_set_debug
+                shift
+                ;;
+            -h|--help)
+                SHOW_HELP=1
+                shift
+                ;;
+            -v|--version)
+                SHOW_VERSION=1
+                shift
+                ;;
+            -b|--banner)
+                SHOW_BANNER=1
+                shift
+                ;;
+            --ee|--easter-eggs)
+                SHOW_EE=1
+                shift
+                ;;
+            -m|--module)
+                # Nous splittons l'argument 2 (-m étant le $1, ce qui suit sera $2) sur la base d'un séparateur ',' et obtenons la whitelist
+                IFS=',' read -ra modules <<< "$2"
+                MODULE_WHITELIST+=("${modules[@]}")
+                # Notre argument est en fait 2 arguments pour bash, nous passons donc 2 arguments
+                shift 2
+                ;;
+            *)
+                log_error "\r\t❌ Option non supportée : $1\n"
+                # Break au premier argument non parsable
+                return 1
+                ;;
+        esac
+    done
+
+    # FIXME : Une logique plus propre en plusieurs étapes de la récupération de l'action et des flags please >:[]
+    if [[ -z "$ACTION" ]]; then
+        # Si nous n'avons pas récupérer d'action en premier argument, nous considérons que nous avons échoué à parser les paramètres, mais nous avons tout de même lu les flags suivants.
+        return 1
+    fi
+
+    # --------------------
+    # Contrôles de cohérence des arguments
+    # --------------------
+
+    # Si nous avons une action qui n'est pas modulaire et que l'utilisateur fourni une whitelist
+    if [[ $(action_get_property "modulable") == "false" ]] && [[ ${#MODULE_WHITELIST[@]} -gt 0 ]]; then
+        log_error "\r\t❌ L'action n'est pas modulaire et n'accepte pas d'arguments [-m|--module]\n"
+        return 1
+    fi
+}

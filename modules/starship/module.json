@@ -2,5 +2,6 @@
     "name": "starship",
     "description": "Gestion du prompt shell Starship",
     "priority": 800,
-    "entrypoint": "starship.sh"
+    "entrypoint": "starship.sh",
+    "actions": ["install", "uninstall"]
 }

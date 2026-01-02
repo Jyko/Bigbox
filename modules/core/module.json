@@ -2,5 +2,6 @@
     "name": "core",
     "description": "Gestion des dépendances et configurations nécessaires au fonctionnement de la Bigbox et ses modules",
     "priority": 0,
-    "entrypoint": "core.sh"
+    "entrypoint": "core.sh",
+    "actions": ["install", "uninstall"]
 }

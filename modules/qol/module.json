@@ -2,5 +2,6 @@
     "name": "qol",
     "description": "Un maximum de Quality Of Life",
     "priority": 1000,
-    "entrypoint": "qol.sh"
+    "entrypoint": "qol.sh",
+    "actions": ["install", "uninstall"]
 }

@@ -2,77 +2,55 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-# ====================
-# Déclarer les librairies et les constantes globales
-# ====================
-
 # Demander l'élévation des privilèges dès le début
 sudo -v
 
 # Bonne pratique, pour définir le répertoire du script
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
 
+# --------------------
 # Variables globales
+# --------------------
+# Contrôle du visuel
+SHOW_HELP=0
+SHOW_BANNER=0
+SHOW_VERSION=0
+SHOW_EE=0
+# Contrôle du comportement
 ACTION=""
-SHOW_HELP=false
-SHOW_BANNER=true
-SHOW_VERSION=false
-SHOW_EASTER_EGGS=false
+declare -a MODULE_WHITELIST=()
 
+# --------------------
 # Importer les librairies
+# --------------------
 source "$SCRIPT_DIR/core/libs.sh"
 
 # --------------------
 # Parser les arguments
 # --------------------
-for arg in "$@"; do
 
-    # Si le paramètre est une action configurée
-    if action_is_valid "$arg"; then
+# Si nous n'arrivons pas à parser les arguments, nous affichons l'aide et ne lançons par la potentielle action valide
+if ! parse_args "$@"; then
+    SHOW_HELP=1
+fi
 
-        # Vérifier que c'est bien la première et seule action passée
-        if [[ -n "$ACTION" ]]; then
-            echo "Une seule action est autorisée à la fois" >&2
-            exit 2
-        fi
-
-        ACTION="$arg"
-
-    else
-        case "$arg" in
-            -s|--silent)
-                log_set_silent
-                ;;
-            -h|--help)
-                SHOW_HELP=true
-                ;;
-            -v|--version)
-                SHOW_VERSION=true
-                ;;
-            -d|--debug)
-                log_set_debug
-                ;;
-            --nb|--no-banner)
-                SHOW_BANNER=false
-                ;;
-            --ee|--easter-eggs)
-                SHOW_EASTER_EGGS=true
-                ;;
-            *)
-                echo "Argument non supporté : $arg" >&2
-                exit 2
-                ;;
-        esac
-    fi
-done
+# Passer en readonly les variables globales de contrôle, maintenant que l'hydratation est faite (ou non)
+readonly SHOW_HELP
+readonly SHOW_BANNER
+readonly SHOW_VERSION
+readonly SHOW_EE
+readonly ACTION
+readonly MODULE_WHITELIST
+readonly LOG_LEVEL
 
 # --------------------
 # Executer l'action
 # --------------------
 menu_show
 
-if [[ -n "$ACTION" && $SHOW_HELP == "false" ]]; then
-    action_execute "$ACTION"
+if [[ -n "$ACTION" && $SHOW_HELP -eq 0 ]]; then
+    action_execute
 fi
 
 exit 0

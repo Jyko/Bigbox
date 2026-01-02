@@ -1,22 +1,27 @@
 {
     "install": {
         "order": "asc",
-        "reboot": "true"
-    },
-    "upgrade": {
-        "order": "asc",
-        "reboot": "true"
-    },
-    "start": {
-        "order": "asc",
-        "reboot": "false"
+        "reboot": "true",
+        "modulable": "false"
     },
     "uninstall": {
         "order": "desc",
-        "reboot": "true"
+        "reboot": "true",
+        "modulable": "false"
+    },
+    "start": {
+        "order": "asc",
+        "reboot": "false",
+        "modulable": "true"
     },
     "stop": {
         "order": "desc",
-        "reboot": "false"
+        "reboot": "false",
+        "modulable": "true"
+    },
+    "upgrade": {
+        "order": "asc",
+        "reboot": "true",
+        "modulable": "true"
     }
 }

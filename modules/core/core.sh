@@ -101,5 +101,3 @@ _core_go_configuration_uninstall() {
     # Supprimer l'entrée dans le PATH
     cfg_delete_dotfile "core_env.sh"
 }
-
-# core_upgrade() { }

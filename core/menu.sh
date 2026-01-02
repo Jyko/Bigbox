@@ -3,11 +3,12 @@
 
 # Afficher la bannière
 _menu_banner() {
-
     local entreprise
-
-    if [[ $SHOW_EASTER_EGGS == "true" ]]; then
-        entreprise="🐒 BOUGARD 🐒"
+    
+    if [[ $SHOW_EE -ne 0 ]]; then
+        entreprise="🐒 \033[1mBOUG\033[0mard 🐒"
+    else
+        entreprise="\033[1mBIG\033[0mard"
     fi
 
     log_info "
@@ -17,26 +18,22 @@ _menu_banner() {
     \t██╔══██╗██║██║   ██║██╔══██╗██║   ██║ ██╔██╗  
     \t██████╔╝██║╚██████╔╝██████╔╝╚██████╔╝██╔╝ ██╗    
     \t╚═════╝ ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝ 
-    \t📦      La boîte à outils ${entreprise:-Bigard}
+    \t📦      La ${entreprise} tool\033[1mBOX\033[0m
     "
 
 }
 
 _menu_debug_status() {
 
-    log_warn "
-    \t🐞      Le mode DEBUG est activé
-    "
+    log_warn "\t🐞      Le mode DEBUG est activé\n"
 
 }
 
 # Afficher les easters eggs
 _menu_easter_eggs() {
 
-    log_info "
-    \t✒️  Auteur :
+    log_info "\t✒️  Auteur :
     \t    🐒  Julien FERREIRA DA COSTA
-
     \t🎤  Cassedédi :
     \t    🐴  Anne-Sophie
     \t    💪  Baptiste
@@ -46,8 +43,7 @@ _menu_easter_eggs() {
     \t    💎  Iwan        
     \t    💣  Kévin
     \t    🏸  Stéphane    
-    \t    🍅  Valérian
-    "
+    \t    🍅  Valérian\n"
 
 }
 
@@ -67,46 +63,44 @@ _menu_version() {
             echo "inconnue")
     fi
 
-    log_info "
-    \t🏷️      version : ${version:-"inconnue"}
-    "
+    log_info "\t🏷️      version : ${version:-"inconnue"}\n"
 
 }
 
 _menu_help() {
-    log_info "
-    \tUsage: bigbox [action] [options ...]
+    log_info "\tUsage: bigbox <action> [options ...]
 
-    \tActions:
-    \t--------------------[ Gestion de la Bigbox ]--------------------
-    \t  install                     Installer la BigBox
-    \t  uninstall                   Désinstaller la BigBox
-    \t  upgrade                     Mettre à jour la BigBox
+    \t-----------------------------------------------------------------
+    \t  Actions         Modulaire               Description             
+    \t-----------------------------------------------------------------
+    \t  install         ❌                      Installer la BigBox     
+    \t  uninstall       ❌                      Désinstaller la BigBox  
+    \t  start           ✅                      Démarrer les outils     
+    \t  stop            ✅                      Eteindre les outils     
+    \t  upgrade         ✅                      Mettre à jour les outils
 
-    \t---------------------[ Gestion des outils ]---------------------
-    \t  start                       Démarrer les outils et déploiements de la BigBox
-    \t  stop                        Eteindre les outils et déploiements de la Bigbox
-
-    \tOptions:
-    \t  [ -h | --help ]             Afficher cette aide
-    \t  [ -d | --debug ]            Activer le mode debug, tous les messages sont loggés
-    \t  [ -q | --quiet ]            Activer le mode quiet, seul les erreurs sont loggées
-    \t  [ -v | --version ]          Afficher la version de la Bigbox
-    \t  [ --nb | --no-banner ]      Masquer la bannière 
-    "
+    \t----------------------------------------------------------------
+    \t Options                                  Description
+    \t----------------------------------------------------------------
+    \t  [ -h | --help ]                         Afficher cette aide
+    \t  [ -d | --debug ]                        Activer le mode debug, tous les messages sont loggés
+    \t  [ -q | --quiet ]                        Activer le mode quiet, seules les erreurs sont loggées
+    \t  [ -v | --version ]                      Afficher la version
+    \t  [ -b | --banner ]                       Afficher la bannière
+    \t  [ -m | --module ] <mod1,mod2,...>       Filtrer les modules à exécuter si l'action selectionnée permet une exécution modulaire\n"
 }
 
 menu_show() {
 
-    if [[ "$SHOW_BANNER" == "true" ]]; then
+    if [[ $SHOW_BANNER -ne 0 ]]; then
         _menu_banner
     fi
 
-    if [[ "$SHOW_VERSION" == "true" ]]; then
+    if [[ $SHOW_VERSION -ne 0 ]]; then
         _menu_version
     fi
 
-    if [[ "$SHOW_EASTER_EGGS" == "true" ]]; then
+    if [[ $SHOW_EE -ne 0 ]]; then
         _menu_easter_eggs
     fi
 
@@ -115,7 +109,7 @@ menu_show() {
     fi
 
     # Afficher l'aide si elle a été demandée ou si aucune action n'a été renseignée
-    if [[ "$SHOW_HELP" == "true" || -z "$ACTION" ]]; then
+    if [[ $SHOW_HELP -ne 0 || -z "$ACTION" ]]; then
         _menu_help
     fi
 

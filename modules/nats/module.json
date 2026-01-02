@@ -2,5 +2,6 @@
     "name": "nats",
     "description": "Gestion du noeud NATS et des outils associés (nats-cli)",
     "priority": 310,
-    "entrypoint": "nats.sh"
+    "entrypoint": "nats.sh",
+    "actions": ["install", "uninstall", "start", "stop", "upgrade"]
 }
