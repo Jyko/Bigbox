@@ -20,7 +20,6 @@ nats_install() {
     run_cmd nats context add bigbox --server nats://localhost:30010
 
     cfg_copy_dotfile "$BB_NATS_DOTFILES_DIR/nats_completion.sh"
-
 }
 
 nats_uninstall() { 

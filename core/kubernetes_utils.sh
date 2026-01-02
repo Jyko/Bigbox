@@ -37,7 +37,7 @@ kutils_verify_kube_context() {
 # Décorateur pour kubectl afin de toujour s'assurer que les commandes sont jouées dans le bon contexte (pas la PRD :D)
 kutils_kubectl_wrapper() {
 
-    run_cmd kubectl \
+    kubectl \
         --context "$BB_K8S_CONTEXT" \
         "$@"
 
@@ -46,7 +46,7 @@ kutils_kubectl_wrapper() {
 # Décorateur pour helm afin de toujours s'assurer que les commandes sont jouées dans le bon contexte (toujours pas la PRD :D)
 kutils_helm_wrapper() {
 
-    run_cmd helm \
+    helm \
         --kube-context "$BB_K8S_CONTEXT" \
         "$@"
 
@@ -177,8 +177,7 @@ kutils_release_stop() {
     mapfile -t resources < <(
         kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" get "$kind" \
             -l "$selector" \
-            -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-            2>/dev/null
+            -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
     )
 
     if (( ${#resources[@]} == 0 )); then
@@ -186,8 +185,8 @@ kutils_release_stop() {
     else
         # Passage des replicas à 0 pour libérer les ressources
         for name in $(kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" get "$kind" -l "$selector" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null); do
+            kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" scale "$kind/$name" --replicas=0
             log_debug "Scaling $kind/$name to 0"
-            kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" scale "$kind/$name" --replicas=0 || true
         done
     fi
 
