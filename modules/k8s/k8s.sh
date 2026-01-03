@@ -165,7 +165,7 @@ _k8s_configuration_uninstall() {
 # Namespace Bigbox
 # --------------------
 _k8s_namespace_verify() {
-    run_cmd kutils_kubectl_wrapper get namespace "$BB_K8S_NAMESPACE"
+    kutils_kubectl_wrapper get namespace "$BB_K8S_NAMESPACE" >/dev/null 2>&1
     return $?
 }
 
@@ -179,16 +179,16 @@ _k8s_namespace_install() {
 
     # Créer le namespace et switch dedans afin d'éviter les conflits et petit accident (coucou la PRD :D)
     if ! _k8s_namespace_verify; then
-        kutils_kubectl_wrapper create namespace "$BB_K8S_NAMESPACE"
+        run_cmd kutils_kubectl_wrapper create namespace "$BB_K8S_NAMESPACE"
     fi
 
-    kutils_verify_kube_context
+    run_cmd kutils_verify_kube_context
 }
 
 _k8s_namespace_uninstall() {
     if _k8s_namespace_verify; then
         # Détruit le reste des ressources persistantes que les stacks auraient laissés (PVC, PV, ...)
-        kutils_kubectl_wrapper delete namespace "$BB_K8S_NAMESPACE"
+        run_cmd kutils_kubectl_wrapper delete namespace "$BB_K8S_NAMESPACE"
     fi
 }
 

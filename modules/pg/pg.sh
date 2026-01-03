@@ -38,5 +38,11 @@ pg_stop() {
 }
 
 _pg_client_verify() {
-    command -v psql >/dev/null 2>&1
+    # Le test de la commande renvoie un faux positif car le postgresql-commons (le wrapper) est appelé et est toujours présent passé la première installation.
+    # Nous testons donc directement l'appel à la version du client wrappé par le commons.
+    if psql --version >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
 }

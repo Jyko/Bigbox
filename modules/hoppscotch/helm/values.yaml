@@ -1,0 +1,35 @@
+# L'alias que l'on donne à l'host Windows/Ubuntu afin de pouvoir l'attaquer depuis l'application Hoppscotch
+# Permet de tester un serveur déployé en localhost:8080 sur l'Host Windows, depuis Hoppscotch, avec une requête `http://host.bigbox:8080/${ma_ressource}`
+# Evite d'avoir à tritrouiller le localhost/0.0.0.0 sur Windows ou publier tous les pods sur le network du Windows.
+hostAlias: "host.bigbox"
+
+postgresql:
+  hostname: "bigbox-pg-svc"
+  port: 5432
+  username: bigbox
+  password: bigbox
+  database: hoppscotch
+
+replicaCount: 1
+
+image:
+  repository: "hoppscotch/hoppscotch"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  client:
+    port: 30040
+  admin:
+    port: 30041
+  backend:
+    port: 30042
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"

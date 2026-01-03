@@ -114,6 +114,7 @@ kutils_release_upgrade() {
         "$helm_dir" \
         -f "$helm_dir/values.yaml" \
         --namespace "$BB_K8S_NAMESPACE" \
+        --wait --timeout 30s \
         "$@"
 
     return 0

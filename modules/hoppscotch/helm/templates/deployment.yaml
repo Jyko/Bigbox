@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bigbox-hoppscotch.fullname" . }}
+  labels:
+    {{- include "bigbox-hoppscotch.labels" . | nindent 4 }}
+    app.kubernetes.io/component: "test-tools"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "bigbox-hoppscotch.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "bigbox-hoppscotch.selectorLabels" . | nindent 8 }}
+    spec:
+      hostAliases:
+        - ip: {{ required "L'IP de l'Host est obligatoire : --set hostIp=# 🚨" .Values.hostIp | quote }}
+          hostnames:
+            - {{ .Values.hostAlias | quote }}
+      # Initialiser la base de donnée avec Prisma. Ces FDPs de devs de merde n'ont pas automatisé çà dans leur image Docker de chien de la casse.
+      initContainers:
+        - name: prisma-migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          command:
+            - sh
+            - -c
+            - pnpm exec prisma migrate deploy
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.postgresql.username }}:{{ .Values.postgresql.password }}@{{ .Values.postgresql.hostname }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}"
+            - name: DATA_ENCRYPTION_KEY
+              value: {{ required "La clé d'encryption de la database Hoppscotch est obligatoire : --set database.dataEncryptionKey=# 🚨" .Values.database.dataEncryptionKey | quote  }}
+            - name: WHITELISTED_ORIGINS
+              value: "http://localhost:3170,http://localhost:3000,http://localhost:3100,app://localhost_3200,app://hoppscotch"
+            - name: VITE_BASE_URL
+              value: "http://localhost:3000"
+            - name: VITE_SHORTCODE_BASE_URL
+              value: "http://localhost:3000"
+            - name: VITE_ADMIN_URL
+              value: "http://localhost:3100"
+            - name: VITE_BACKEND_GQL_URL
+              value: "http://localhost:3170/graphql"
+            - name: VITE_BACKEND_WS_URL
+              value: "wss://localhost:3170/graphql"
+            - name: VITE_BACKEND_API_URL
+              value: "http://localhost:3170/v1"
+            - name: VITE_APP_TOS_LINK
+              value: "https://docs.hoppscotch.io/support/terms"
+            - name: VITE_APP_PRIVACY_POLICY_LINK
+              value: "https://docs.hoppscotch.io/support/privacy"
+            # Alternate port et subpath => Pour les clients desktop qui se connectent => OSEF !
+            # - name: HOPP_AIO_ALTERNATE_PORT
+            #  value: 80
+            - name: ENABLE_SUBPATH_BASED_ACCESS
+              value: "false"
+      # Le conteneur AIO de Hoppscotch, qui peut être démarré après l'initialisation de la BdD
+      containers:
+        - name: hoppscotch
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.postgresql.username }}:{{ .Values.postgresql.password }}@{{ .Values.postgresql.hostname }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}"
+            - name: DATA_ENCRYPTION_KEY
+              value: {{ required "La clé d'encryption de la database Hoppscotch est obligatoire : --set database.dataEncryptionKey=# 🚨" .Values.database.dataEncryptionKey | quote  }}
+            - name: WHITELISTED_ORIGINS
+              value: "http://localhost:30040,http://localhost:30041,http://localhost:30042,app://localhost_3200,app://hoppscotch"
+            - name: VITE_BASE_URL
+              value: "http://localhost:30040"
+            - name: VITE_SHORTCODE_BASE_URL
+              value: "http://localhost:30040"
+            - name: VITE_ADMIN_URL
+              value: "http://localhost:30041"
+            - name: VITE_BACKEND_GQL_URL
+              value: "http://localhost:30042/graphql"
+            - name: VITE_BACKEND_WS_URL
+              value: "wss://localhost:30042/graphql"
+            - name: VITE_BACKEND_API_URL
+              value: "http://localhost:30042/v1"
+            - name: VITE_APP_TOS_LINK
+              value: "https://docs.hoppscotch.io/support/terms"
+            - name: VITE_APP_PRIVACY_POLICY_LINK
+              value: "https://docs.hoppscotch.io/support/privacy"
+            # Alternate port et subpath => Pour les clients desktop qui se connectent => OSEF !
+            # - name: HOPP_AIO_ALTERNATE_PORT
+            #  value: 80
+            - name: ENABLE_SUBPATH_BASED_ACCESS
+              value: "false"
+          ports:
+            - name: client
+              containerPort: 3000
+              protocol: TCP
+            - name: admin
+              containerPort: 3100
+              protocol: TCP
+            - name: backend
+              containerPort: 3170
+              protocol: TCP

@@ -12,6 +12,7 @@ BB_CORE_PACKAGES=(
     curl
     golang-go
     jq
+    openssl
     shellcheck
     yq
     wget

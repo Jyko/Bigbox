@@ -152,3 +152,25 @@ parse_args() {
         return 1
     fi
 }
+
+get_host_ip() {
+    local host_ip
+
+    # Nous tentons de détecter si nous sommes sur un WSL2
+    # Si nous sommes sur une WSL2, nous récupérons lIP du Windows host via le nameserver dans /etc/resolv.conf
+    if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
+        host_ip=$(grep nameserver /etc/resolv.conf | awk '{print $2}')
+        echo "$host_ip"
+        return 0
+    fi
+
+    # Nous tentons de détecter si nous sommes sur un Ubuntu standalone (server, desktop, container)
+    if command -v hostname &> /dev/null; then
+        host_ip=$(hostname -I | awk '{print $1}')
+        echo "$host_ip"
+        return 0
+    fi
+
+    log_error "Impossible de détecter l'environnement d'exécution de la Bigbox et donc l'IP de l'Host\n" >&2
+    return 2
+}

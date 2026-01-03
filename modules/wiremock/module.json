@@ -1,0 +1,7 @@
+{
+    "name": "wiremock",
+    "description": "Gestion de l'instance Wiremock",
+    "priority": 330,
+    "entrypoint": "wiremock.sh",
+    "actions": ["install", "uninstall", "start", "stop", "upgrade"]
+}
