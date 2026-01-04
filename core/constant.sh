@@ -9,13 +9,17 @@ BB_MOD_DIR="$SCRIPT_DIR/modules"
 # Répertoire des ressources de la Bigbox
 BB_RSC_DIR="$SCRIPT_DIR/resources"
 
+# Fichier de configuration environnementale par défaut
+BB_CFG_REGISTRY_DEFAULT_FILE="$BB_RSC_DIR/bigbox-default.env"
+BB_CFG_REGISTRY_USER_FILE=""
+
 # Répertoire d'installation de la configuration de la BigBox
 BB_CFG_DIR="$HOME/.config/bigbox"
 BB_CFG_ENTRYPOINT_FILENAME="bigbox.sh"
 BB_CFG_ENTRYPOINT_FILE="$BB_CFG_DIR/$BB_CFG_ENTRYPOINT_FILENAME"
 
 BB_CFG_DOTFILES_DIR="$BB_CFG_DIR/dotfiles"
-BB_CFG_ENV_FILE="$BB_CFG_DOTFILES_DIR/env.sh"
+BB_CFG_DOTFILES_ENV_FILE="$BB_CFG_DOTFILES_DIR/env.sh"
 
 # KUBERNETES
 BB_K8S_CONFIG_DIR=$HOME/.kube

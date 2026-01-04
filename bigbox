@@ -45,11 +45,17 @@ readonly MODULE_WHITELIST
 readonly LOG_LEVEL
 
 # --------------------
+# Chargement du registre
+# --------------------
+reg_bootstrap
+
+# --------------------
 # Executer l'action
 # --------------------
 menu_show
 
 if [[ -n "$ACTION" && $SHOW_HELP -eq 0 ]]; then
+    # Execution de l'action demandée
     action_execute
 fi
 

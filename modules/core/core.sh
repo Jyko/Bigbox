@@ -79,7 +79,7 @@ EOF
 
 _core_bigbox_configuration_uninstall() {
 
-    # Suppresion de toute la configuration Bigbox initiale !
+    # Suppression de toute la configuration Bigbox initiale !
     # FIXME: Les désinstallations de modules devraient se jouer dans l'ordre inverse.
     # Actuellement, je détruis les configurations des modules avant qu'ils aient eu le temps de clean tout correctement.
     sudo rm -rf "$BB_CFG_DIR"

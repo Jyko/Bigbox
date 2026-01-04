@@ -82,7 +82,7 @@ _cfg_env_get_value() {
         esac
     done
 
-    fs_assure_existing_file "$BB_CFG_ENV_FILE"
+    fs_assure_existing_file "$BB_CFG_DOTFILES_ENV_FILE"
 
     [[ -z "$key" ]] && return 1
 
@@ -91,7 +91,7 @@ _cfg_env_get_value() {
     local line
 
     # Récupération de la ligne de configuration correspondant à l'export de la variable
-    line=$(cfg_get_line -p="$pattern" -f="$BB_CFG_ENV_FILE" -s) || { return $? ; }
+    line=$(cfg_get_line -p="$pattern" -f="$BB_CFG_DOTFILES_ENV_FILE" -s) || { return $? ; }
 
     # Extraction de la valeur
     echo "${line#*=}"
@@ -121,7 +121,7 @@ cfg_modify_env() {
         log_error "Un mode de modification est obligatoire \n" && return 2;
     fi
 
-    fs_assure_existing_file "$BB_CFG_ENV_FILE"
+    fs_assure_existing_file "$BB_CFG_DOTFILES_ENV_FILE"
 
     local pattern current_value new_value 
 
@@ -138,10 +138,10 @@ cfg_modify_env() {
     # Si la nouvelle valeur est blanche à la suite de l'application des modifications, nous supprimons la ligne d'instruction dans le fichier de configuration.
     # Sinon nous ajoutons la ligne avec la nouvelle valeur
     if [[ -z "$new_value" ]]; then
-        cfg_set_line -p="$pattern" -l="" -f="$BB_CFG_ENV_FILE"
-        fs_delete_empty_file "$BB_CFG_ENV_FILE"
+        cfg_set_line -p="$pattern" -l="" -f="$BB_CFG_DOTFILES_ENV_FILE"
+        fs_delete_empty_file "$BB_CFG_DOTFILES_ENV_FILE"
     else
-        cfg_set_line -p="$pattern" -l="export $key=$new_value" -f="$BB_CFG_ENV_FILE"
+        cfg_set_line -p="$pattern" -l="export $key=$new_value" -f="$BB_CFG_DOTFILES_ENV_FILE"
     fi
 
     return 0
