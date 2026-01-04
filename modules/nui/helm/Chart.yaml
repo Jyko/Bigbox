@@ -1,6 +1,0 @@
-apiVersion: v2
-name: bigbox-nui
-description: "Un NATS-UI pour la BigBox"
-type: application
-version: 1.0.0
-appVersion: "v0.8.1"

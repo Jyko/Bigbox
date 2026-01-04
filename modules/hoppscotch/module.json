@@ -1,7 +1,0 @@
-{
-    "name": "hoppscotch",
-    "description": "Gestion de l'instance Hoppscotch",
-    "priority": 340,
-    "entrypoint": "hoppscotch.sh",
-    "actions": ["install", "uninstall", "start", "stop", "upgrade"]
-}
