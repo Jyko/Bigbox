@@ -15,8 +15,6 @@ BB_QOL_PACKAGES=(
 
 qol_install() {
 
-    
-
     apt_wrapper install "${BB_QOL_PACKAGES[@]}"
 
     # Générer le fichier de configuration de bat
@@ -25,6 +23,7 @@ qol_install() {
     fi
 
     _qol_lazygit_install
+    _qol_zoxide_install
     
     cfg_copy_dotfile "$BB_QOL_DOTFILES_DIR/qol_alias.sh"
     cfg_copy_dotfile "$BB_QOL_DOTFILES_DIR/qol_completion.sh"
@@ -40,6 +39,7 @@ qol_uninstall() {
     cfg_delete_dotfile "qol_env.sh"
     cfg_delete_dotfile "qol_keybinding.sh"
 
+    _qol_zoxide_uninstall
     _qol_lazygit_uninstall
 
     apt_wrapper purge "${BB_QOL_PACKAGES[@]}" || true
@@ -75,4 +75,15 @@ _qol_lazygit_uninstall() {
     # On supprime en silence les deux possibilités
     sudo rm -f "/usr/local/bin/lazygit"
     apt_wrapper purge lazygit || true
+}
+
+_qol_zoxide_install() {
+    if ! command -v zoxide >/dev/null 2>&1; then
+        curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+    fi
+}
+
+_qol_zoxide_uninstall() {
+    rm -f "$HOME/.local/bin/zoxide"
+    rm -rf "$HOME/.local/share/zoxide"
 }
