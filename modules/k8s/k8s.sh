@@ -79,6 +79,22 @@ _k8s_tools_install() {
         return 0
     fi
 
+    # Ajouter le répo officiel Kubernetes
+    sudo mkdir -p -m 755 /etc/apt/keyrings
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null <<< \
+    'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /'
+    sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
+
+    # Ajouter le répo officiel de Helm
+    curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+    sudo tee /etc/apt/sources.list.d/helm-stable-debian.list > /dev/null <<< \
+    'deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main'
+
+    # Mettre à jour la liste des répos avant d'installer les outils
+    apt_wrapper update
+
     # Kubectl, Kubectx et Helm
     apt_wrapper install kubectl kubectx helm
 
