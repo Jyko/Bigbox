@@ -129,7 +129,7 @@ _k8s_generate_unified_configuration() {
     # On appelle kubectl nature, sans wrapper.
     # En cas de contexte identique, le dernier chargé prend la précédence, d'où l'ordre de passage en argument des fichiers dans KUBECONFIG.
     # Kubectl considère un chemin de fichier null comme un fichier vide
-    KUBECONFIG="$BB_K8S_STANDARD_FILE:$BB_K8S_BIGBOX_FILE" kubectl config view --merge --flatten > "$BB_K8S_UNIFIED_FILE"
+    KUBECONFIG="$BB_K8S_BACKUP_FILE:$BB_K8S_BIGBOX_FILE" kubectl config view --merge --flatten > "$BB_K8S_UNIFIED_FILE"
 
     # Symlink sur config.yaml, comme çà c'est propre et portable 👍
     ln -sf "$BB_K8S_UNIFIED_FILE" "$BB_K8S_STANDARD_FILE"
