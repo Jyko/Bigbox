@@ -20,7 +20,6 @@ BB_K8S_K3S_UNINSTALL_SCRIPT="/usr/local/bin/k3s-uninstall.sh"
 
 k8s_install() {
 
-
     _k8s_k3s_install
     _k8s_tools_install
     _k8s_configuration_install
@@ -156,6 +155,8 @@ _k8s_configuration_install() {
 
     # Maintenant que le fichier de configuration bigbox est prêt et idempotent, nous générons une nouvelle configuration unifiée
     _k8s_generate_unified_configuration
+
+    kubectx $BB_K8S_CONTEXT
 }
 
 # Désinstaller la configuration bigbox mais conserver les autres
