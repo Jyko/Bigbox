@@ -36,7 +36,7 @@ catppucin_uninstall() {
 
     cfg_delete_dotfile "catppucin_env.sh"
 
-    rm -rf "$(dirname "$(batcat --config-file)")"
+    run_cmd sudo rm -rf "/etc/bat/config"
 
     apt_wrapper purge vivid || true
 

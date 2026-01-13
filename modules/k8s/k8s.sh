@@ -4,7 +4,7 @@
 BB_K8S_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_K8S_MODULE_DOTFILES_DIR="$BB_K8S_MODULE_BASE_DIR/dotfiles"
 
-BB_K8S_KUBECTL_TIMEOUT="30"
+BB_K8S_KUBECTL_TIMEOUT="60"
 
 BB_K8S_BIGBOX_FILE="$BB_K8S_CONFIG_DIR/bigbox.yaml"
 BB_K8S_BACKUP_FILE="$BB_K8S_CONFIG_DIR/backup-config.yaml"
@@ -59,7 +59,7 @@ _k8s_k3s_uninstall() {
     # Désinstaller k3s via son script, me demandez pas ce que çà fait, j'en sais rien :DDD
     if _k8s_k3s_verify; then
         # Nous dégageons des services inutiles pour nous (LB et DNS)
-        run_cmd sudo "$BB_K8S_K3S_UNINSTALL_SCRIPT" --disable servicelb --disable traefik --disable-cloud-controller --disable-network-policy
+        run_cmd sudo "$BB_K8S_K3S_UNINSTALL_SCRIPT"
     fi
 }
 
@@ -80,7 +80,7 @@ _k8s_tools_install() {
 
     # Ajouter le répo officiel Kubernetes
     sudo mkdir -p -m 755 /etc/apt/keyrings
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg -batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null <<< \
     'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /'
@@ -232,6 +232,14 @@ _k8s_dotfiles_uninstall() {
 # A refléchir, çà à l'air tricky
 # k8s_upgrade() { return 0 ; }
 
-# Trop d'effet de bord à arrêter k3s et ses services, c'est ultra-galère à redémarrer à la main.
-# k8s_stop() { return 0 ; }
-# k8s_start() { return 0 ; }
+k8s_start() {
+    run_cmd sudo systemctl start k3s
+    if ! kutils_wait_api_available; then
+        log_error "Le cluster Kubernetes et son API n'ont pas démarré correctement \n"
+        return 2
+    fi
+ }
+
+k8s_stop() { 
+    run_cmd sudo systemctl stop k3s
+ }
