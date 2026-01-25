@@ -14,6 +14,7 @@ BB_CORE_PACKAGES=(
     gnupg
     golang-go
     jq
+    make
     openssl
     shellcheck
     tar
