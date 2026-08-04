@@ -5,6 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO : Améliorer un peu l'usabilité des commandes en maitrisant un peu plus la librairie Cobra
+
 func NewRootCmd(reconciler *engine.Reconciler) *cobra.Command {
 
 	root := &cobra.Command{

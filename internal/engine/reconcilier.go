@@ -86,15 +86,14 @@ func (r *Reconciler) resolvePlan(ctx context.Context, plan *Plan) error {
 
 		ms, err := m.GetState(ctx)
 		if err != nil {
-			return err
-			return fmt.Errorf("failed to get module %s current state : %w", m.GetInfos().Name, err)
+			return fmt.Errorf("failed to get module %s current state: %w", m.GetInfos().Name, err)
 		}
 
 		switch operation.OperationType {
 		case InstallOperation:
 			if !ms.Installed && mi.Installable {
 				if err := m.Install(ctx); err != nil {
-					return fmt.Errorf("failed to install module %s : %w", m.GetInfos().Name, err)
+					return fmt.Errorf("failed to install module %s: %w", m.GetInfos().Name, err)
 				}
 			} else {
 				r.log.Warn("module %s install has been skipped", m.GetInfos().Name)
@@ -102,7 +101,7 @@ func (r *Reconciler) resolvePlan(ctx context.Context, plan *Plan) error {
 		case UninstallOperation:
 			if ms.Installed && mi.Installable {
 				if err := m.Uninstall(ctx); err != nil {
-					return fmt.Errorf("failed to uninstall module %s : %w", m.GetInfos().Name, err)
+					return fmt.Errorf("failed to uninstall module %s: %w", m.GetInfos().Name, err)
 				}
 			} else {
 				r.log.Warn("module %s uninstall has been skipped", m.GetInfos().Name)

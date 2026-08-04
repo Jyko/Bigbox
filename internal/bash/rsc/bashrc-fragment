@@ -1,0 +1,5 @@
+{{ .MarkerStart }}
+if [ -r "{{ .BigboxEntrypoint }}" ]; then
+    source "{{ .BigboxEntrypoint }}"
+fi
+{{ .MarkerEnd }}

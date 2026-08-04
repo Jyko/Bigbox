@@ -2,41 +2,67 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 
+	"bigard.fr/bigbox/internal/bash"
 	"bigard.fr/bigbox/internal/cli"
 	"bigard.fr/bigbox/internal/engine"
+	"bigard.fr/bigbox/internal/file"
 	"bigard.fr/bigbox/internal/module"
-	"bigard.fr/bigbox/internal/modules/qol"
-	"bigard.fr/bigbox/internal/modules/ubuntu"
+	"bigard.fr/bigbox/internal/modules"
+	"bigard.fr/bigbox/internal/runtime"
+	"bigard.fr/bigbox/internal/user"
 )
 
 func main() {
 
-	err := elevateToRoot()
+	err := validateSudo()
+	if err != nil {
+		os.Exit(1)
+	}
+
+	// Contexte de l'utilisateur
+	userCtx, err := user.NewContext()
 	if err != nil {
 		os.Exit(1)
 	}
 
 	// Loggers structurés, sortie StdOut pour le moment
-	defaultLogger := slog.New(slog.NewTextHandler(
+	logger := slog.New(slog.NewTextHandler(
 		os.Stdout,
 		&slog.HandlerOptions{
 			Level: slog.LevelInfo,
 		},
 	))
+	slog.SetDefault(logger)
 
-	slog.SetDefault(defaultLogger)
+	// Injection des "services" communs à la mano
+	cmdRunner := bash.NewStdCmdRunner(logger)
+	fileManager := file.NewStdManager(logger)
+	pkgManager := bash.NewAptPkgManager(logger, cmdRunner)
+	rcManager := bash.NewStdRcManager(logger, userCtx, cmdRunner, fileManager)
+
+	// Instanciation du contexte d'éxecution partagé entre les modules
+	bigboxRuntime := runtime.NewStdBigboxRuntime(
+		userCtx,
+		cmdRunner,
+		pkgManager,
+		fileManager,
+		rcManager,
+		logger,
+	)
 
 	registry := engine.NewRegistry()
-	// TODO : Plus tard, nous aurons un système de chargement des modules plutôt qu'une déclaration statique
-	// TODO : Egalement, nous chargerons des variables et secrets depuis des sources externes
+	// TODO : Plus tard, nous aurons une implémentation de chargement des modules plutôt qu'une déclaration statique
+	// TODO : Egalement, nous chargerons des variables et secrets depuis des sources externes afin de créer un environment context pour les modules
 	registry.Register([]module.Module{
-		ubuntu.New(),
-		qol.New(),
+		modules.NewCoreModule(bigboxRuntime),
+		modules.NewUbuntuModule(bigboxRuntime),
+		modules.NewQoLModule(bigboxRuntime),
 	})
 	reconciler := engine.NewReconciler(registry)
 
@@ -52,20 +78,21 @@ func main() {
 
 }
 
-func elevateToRoot() error {
+// Valider les droits et la capacité d'élévation de l'utilisateur
+func validateSudo() error {
 
+	// Déjà
 	if os.Geteuid() == 0 {
-		return nil
+		return errors.New("bigbox must not be run as root; retry as your user")
 	}
 
-	args := append([]string{os.Args[0]}, os.Args[1:]...)
-	cmd := exec.Command("sudo", args...)
+	// Nous demandons à valider un ticket d'élévation de droit que l'utilisateur pourra ensuite utiliser à sa guise (via CmdRunner#RunAsRoot())
+	cmd := exec.Command("sudo", "-v")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("sudoer failed: %w", err)
+		return fmt.Errorf("sudo authentication failed: %w", err)
 	}
 
-	os.Exit(0)
 	return nil
 }

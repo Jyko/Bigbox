@@ -2,7 +2,7 @@ package module
 
 import "context"
 
-type ModuleInfo struct {
+type Info struct {
 	Name        string
 	Version     string
 	Description string
@@ -17,7 +17,7 @@ type State struct {
 }
 
 type Module interface {
-	GetInfos() ModuleInfo
+	GetInfos() Info
 	GetState(ctx context.Context) (State, error)
 	Install(ctx context.Context) error
 	Uninstall(ctx context.Context) error

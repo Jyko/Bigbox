@@ -1,4 +1,4 @@
-package shell
+package bash
 
 import (
 	"bytes"
@@ -12,27 +12,49 @@ import (
 	"slices"
 )
 
-type RunnableCommand struct {
+type Cmd struct {
 	Cmd                  string
 	Args                 []string
+	Privilege            PrivilegeLevel
 	AcceptableErrorCodes []int
-	OnSuccess            func(stdOut string) error                       // Version minimaliste du callback onSuccess
-	OnError              func(exitCode int, stdOut, stdErr string) error // Version minimaliste du callback onError, vous pouvez les modifier à votre guise
+	OnSuccess            func(stdOut string) error
+	OnError              func(exitCode int, stdOut, stdErr string) error
 }
 
-type Runner struct {
+type PrivilegeLevel int
+
+const (
+	PrivilegeUser PrivilegeLevel = iota
+	PrivilegeRoot
+)
+
+type CmdRunner interface {
+	Run(ctx context.Context, cmd *Cmd) error
+	RunSequence(ctx context.Context, sequence []Cmd) error
+}
+
+type StdCmdRunner struct {
 	log *slog.Logger
 }
 
-func NewRunner() *Runner {
-	return &Runner{
-		log: slog.With("component", "Runner"),
+var _ CmdRunner = (*StdCmdRunner)(nil)
+
+// NewStdCmdRunner Instancier un nouveau gestionnaire d'exécution de commandes
+func NewStdCmdRunner(logger *slog.Logger) *StdCmdRunner {
+	return &StdCmdRunner{
+		log: logger,
 	}
 }
 
-func (r *Runner) Run(ctx context.Context, cmd *RunnableCommand) error {
+func (r *StdCmdRunner) Run(ctx context.Context, cmd *Cmd) error {
 
 	var stdOutBuf, stdErrBuf bytes.Buffer
+
+	if cmd.Privilege == PrivilegeRoot {
+		// La commande devient un argument de sudo, nous prenons soin de l'insérer en tête de la slice d'args
+		cmd.Args = slices.Insert(cmd.Args, 0, cmd.Cmd)
+		cmd.Cmd = "sudo"
+	}
 
 	cmdCtx := exec.CommandContext(ctx, cmd.Cmd, cmd.Args...)
 	cmdCtx.Stdin = os.Stdin
@@ -102,5 +124,19 @@ func (r *Runner) Run(ctx context.Context, cmd *RunnableCommand) error {
 		"args", cmd.Args,
 		"stdout", stdOutBuf.String(),
 	)
+	return nil
+}
+
+func (r *StdCmdRunner) RunSequence(ctx context.Context, sequence []Cmd) error {
+
+	for _, cmd := range sequence {
+		if err := r.Run(ctx, &cmd); err != nil {
+			r.log.Error("commands sequence failed", "cmd", cmd.Cmd, "args", cmd.Args, "error", err)
+			return fmt.Errorf("commands sequence failed with: %w", err)
+		}
+	}
+
+	r.log.Debug("commands sequence successfully executed")
+
 	return nil
 }

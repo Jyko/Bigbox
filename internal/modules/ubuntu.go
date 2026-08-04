@@ -1,30 +1,28 @@
-package ubuntu
+package modules
 
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
+	"bigard.fr/bigbox/internal/bash"
 	"bigard.fr/bigbox/internal/module"
-	"bigard.fr/bigbox/internal/shell"
+	"bigard.fr/bigbox/internal/runtime"
 )
 
 var _ module.Module = (*UbuntuModule)(nil)
 
 type UbuntuModule struct {
-	log    *slog.Logger
-	runner *shell.Runner
+	runtime runtime.BigboxRuntime
 }
 
-func New() *UbuntuModule {
+func NewUbuntuModule(runtime runtime.BigboxRuntime) *UbuntuModule {
 	return &UbuntuModule{
-		log:    slog.With("component", "UbuntuModule"),
-		runner: shell.NewRunner(),
+		runtime: runtime,
 	}
 }
 
-func (u UbuntuModule) GetInfos() module.ModuleInfo {
-	return module.ModuleInfo{
+func (u UbuntuModule) GetInfos() module.Info {
+	return module.Info{
 		Name:        "ubuntu",
 		Version:     "1.0.0",
 		Description: "Vérification et mise-à-jour du kernel et de la distribution Ubuntu WSL2",
@@ -44,18 +42,31 @@ func (u UbuntuModule) GetState(ctx context.Context) (module.State, error) {
 
 func (u UbuntuModule) Install(ctx context.Context) error {
 
-	// TODO : /etc/update-manager/release-upgrades à changer pour passer en normal. Certainement une fonction générique à écrire pour changer des lignes de fichiers (çà servira pour les dotfiles et le .bashrc)
+	changed, err := u.runtime.File().ReplaceKeyValue(
+		"/etc/update-manager/release-upgrades",
+		"Prompt",
+		"normal",
+		false,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to modify do-release-update lts->normal: %w", err)
+	}
+	if changed > 0 {
+		u.runtime.Logger().Debug("successfully changed do-release-update lts->normal")
+	} else {
+		u.runtime.Logger().Debug("skipped change do-release-update lts->normal")
+	}
 
 	// do-release-update retourne un exit code 1 en cas de release à jour, aussi étonnant que cela puisse paraitre.
-	err := u.runner.Run(
+	err = u.runtime.Cmd().Run(
 		ctx,
-		&shell.RunnableCommand{
+		&bash.Cmd{
 			Cmd:                  "do-release-upgrade",
 			AcceptableErrorCodes: []int{1},
 		},
 	)
 	if err != nil {
-		u.log.Error("failed to upgrade ubuntu", "error", err)
+		u.runtime.Logger().Error("failed to upgrade ubuntu", "error", err)
 		return fmt.Errorf("failed to upgrade ubuntu: %w", err)
 	}
 
