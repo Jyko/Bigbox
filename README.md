@@ -5,6 +5,26 @@ La Bigbox `install` de manière idempotent, reproductible, sans configuration et
 La Bigbox `uninstall` l'environnement de développement en laissant les configurations utilisateurs en l'état.
 La Bigbox permet de piloter les outils installés en quelques commandes simples (`start`, `stop`, `upgrade`).
 
+## Participer
+
+Pour participer à l'évolution de la Bigbox, un environnement de développement configuré est conseillé pour accélérer la compilation et le test du livrable.
+Il est conseillé de cloner le repo sur une distribution Debian/Ubuntu (sur WSL2 par exemple) disposant du compiler GoLang.
+L'IDE peut être installé au choix sur la distribution Debian/Ubuntu ou sur un hôte Windows. Nous ouvrirons le workspace du projet en pointant vers le répertoire root.
+*Exemple d'un GoLand installé sur hôte Windows ouvrant le projet cloné sur une Ubuntu tournant sous WSL2*
+
+![img.png](docs/exemple_ouverture_projet_1.png)
+
+Afin de tester rapidement la Bigbox contre une distribution Debian/Ubuntu toute neuve, nous disposons d'un [makefile](/makefile) avec plusieurs règles :
+- `make build` construit l'exécutable de la Bigbox dans le répertoire racine du projet
+- `make init-env` crée une snapshot d'une nouvelle distribution Ubuntu propre d'intégration. La snapshot est enregistré sous `%USERPROFILE%\wsl2\backup`. N'hésitez pas à purger ce répertoire si l'espace vient à manquer, les snapshots pèsent chacune un bon 650Mo.
+- `make reset-env` remplace la distribution d'intégration souillée par une snapshot propre
+- `make deploy` compile et deploie l'exécutable de la Bigbox sur la distribution d'intégration
+- `make test` joue les actions avec les paramètres fournis contre la Bigbox déployée dans la distribution d'intégration (pratique pour faire un test rapide sur un environnement standard) 
+
+Voilà, vous pouvez développer de nouveaux modules de la Bigbox, les compiler et les tester en quelques lignes de commandes.
+
+> Une compilation et test sur container Docker pourrait être un bon refacto futur !
+
 ## Pré-requis
 
 Il est nécessaire de disposer d'une distribution Ubuntu (ou un kernel Debian) de version majeure `>= 24`. La dernière LTS et les dernières versions edge sont donc des cibles parfaites.
