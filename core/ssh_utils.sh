@@ -44,10 +44,6 @@ ssh_generate_key() {
     # Si au moins l'une des clés de la paire est manquante, nous effaçons et regénérons une paire complète.
     if [[ ! -f "$private_key_path" || ! -f "$public_key_path" ]]; then
         rm -f "$private_key_path" "$public_key_path"
-
-    # Retirer le répertoire des clés Bigbox s'il est désormais vide
-    rmdir --ignore-fail-on-non-empty "$BB_SSH_DIR" 2>/dev/null || true
-        
         ssh-keygen -t ed25519 -f "$private_key_path" -N "" -q
         chmod 600 "$private_key_path"
         chmod 644 "$public_key_path"
@@ -70,4 +66,7 @@ ssh_delete_key() {
     public_key_path=$(ssh_get_key_path "$key_name.pub")
 
     rm -f "$private_key_path" "$public_key_path"
+
+    # Retirer le répertoire des clés Bigbox s'il est désormais vide
+    rmdir --ignore-fail-on-non-empty "$BB_SSH_DIR" 2>/dev/null || true
 }

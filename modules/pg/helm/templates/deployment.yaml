@@ -41,10 +41,15 @@ spec:
                 - {{ .Values.postgresql.user }}
             initialDelaySeconds: 15
             periodSeconds: 5
+          # Par TCP : pendant l'initialisation, l'image démarre un serveur temporaire joignable
+          # uniquement par le socket Unix. Une sonde locale déclarerait le pod prêt (et rendrait
+          # la main à helm --wait) avant que PostgreSQL n'accepte les connexions du NodePort.
           readinessProbe:
             exec:
               command:
                 - pg_isready
+                - -h
+                - 127.0.0.1
                 - -U
                 - {{ .Values.postgresql.user }}
             initialDelaySeconds: 5

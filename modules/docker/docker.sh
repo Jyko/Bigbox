@@ -56,6 +56,11 @@ docker_install() {
         "Signed-By: $BB_DOCKER_APT_KEY_FILE" \
         | state_create_file "$BB_DOCKER_APT_SOURCE_FILE"
 
+    # Le groupe docker est créé par le paquet docker-ce : son absence se constate AVANT l'install
+    if ! getent group docker >/dev/null 2>&1; then
+        state_mark_owned "group:docker"
+    fi
+
     # Installation des packages
     apt_wrapper update
     apt_install "${BB_DOCKER_PACKAGES[@]}"
@@ -63,7 +68,6 @@ docker_install() {
     # Ajouter l'utilisateur au groupe Docker, ne sera pris en compte qu'au prochain redémarrage du conteneur WSL2
     if ! getent group docker >/dev/null 2>&1; then
         sudo groupadd docker
-        state_mark_owned "group:docker"
     fi
     sudo usermod -aG docker "$USER"
 
