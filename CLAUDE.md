@@ -11,21 +11,41 @@ La Bigbox est un outil 100 % Bash qui installe, désinstalle et pilote un enviro
 **Ne jamais lancer `./bigbox` (même `-h`) directement sur le poste de développement.** L'outil lance `sudo -v` dès le démarrage et modifie réellement la machine : apt, systemd, `~/.bashrc`, `~/.kube`, `~/.ssh/bigbox`, `~/.config`. Toute exécution passe par la sandbox QEMU/KVM :
 
 ```sh
-tools/sandbox/sandbox.sh create [24.04|26.04]   # VM jetable + snapshot "pristine"
-tools/sandbox/sandbox.sh run install            # rsync du dépôt puis ./bigbox install dans la VM
-tools/sandbox/sandbox.sh run start -m pg,nats   # n'importe quels arguments de la Bigbox
-tools/sandbox/sandbox.sh exec '<commande>'      # commande arbitraire dans ~/Bigbox de la VM
-tools/sandbox/sandbox.sh reset                  # retour à une Ubuntu vierge
+tools/sandbox/sandbox.sh -r 26.04 create          # VM jetable + snapshot "pristine" (défaut : 24.04)
+tools/sandbox/sandbox.sh -r 26.04 run install     # rsync du dépôt puis ./bigbox install dans la VM
+tools/sandbox/sandbox.sh run start -m pg,nats     # n'importe quels arguments de la Bigbox
+tools/sandbox/sandbox.sh exec '<commande>'        # commande arbitraire dans ~/Bigbox de la VM
+tools/sandbox/sandbox.sh -r 26.04 reset           # retour à une Ubuntu vierge
+tools/sandbox/sandbox.sh status                   # état de toutes les VM
 ```
+
+Une VM par release, utilisables en parallèle : `~/.cache/bigbox-sandbox/vm-<release>/`, port SSH `2<release>` (24.04 → 22404). Par défaut 2 vCPU, 4 Go de RAM, disque qcow2 de 20 Go maximum (alloué à l'usage).
 
 Actions de la Bigbox : `install|uninstall|start|stop|upgrade [-m mod1,mod2]`, options `-d` (debug), `-s` (silencieux), `-h`, `-v`, `-b`.
 
-Tests en sandbox : toujours bornés. 120 s maximum par install ou uninstall, avec le `timeout` lancé **dans la VM** (un timeout côté hôte ne tue que le client SSH). Contrôles bornés eux aussi, logs horodatés non bufferisés. Tester module par module avec `-m` plutôt qu'une install complète.
-
-Il n'y a pas de suite de tests. Lint, à lancer sur l'hôte (doit rester sans avertissement) :
+Tests rejouables (`tests/`), exécutés dans la sandbox. Code de sortie non nul si un cas échoue :
 
 ```sh
-shellcheck -x bigbox core/*.sh modules/*/*.sh modules/*/dotfiles/*.sh tools/sandbox/*.sh
+tests/run.sh                     # tous les cas (deps, qol, pg, full) sur 24.04
+tests/run.sh -r 24.04,26.04      # les mêmes sur 24.04 et 26.04 EN PARALLÈLE (une VM par release)
+tests/run.sh -r 26.04 pg         # un cas, sur 26.04 (la VM est créée si besoin)
+tests/run.sh -t 180 full         # force la durée maximale par install/uninstall
+```
+
+- Un cas = un fichier `tests/cases/<nom>.sh` :
+  - soit `TEST_INSTALL_ARGS`, `TEST_UNINSTALL_ARGS` et les fonctions `test_after_install` / `test_after_uninstall` (optionnel : `TEST_ACTION_TIMEOUT`, 300 s pour `full`) ;
+  - soit `test_run` seul (assertions sans action de la Bigbox, ex. `deps`).
+- Déroulé d'un scénario : reset au snapshot `pristine`, poste préexistant simulé (`tests/lib/prepare_desktop.sh` : htop, fzf, fichiers personnels), install, assertions, uninstall (jouée même si l'install échoue), assertions.
+- Les assertions (`tests/lib/assert.sh`) tournent dans la VM, chacune bornée à 10 s. Les chemins utilisent le `$HOME` de la VM.
+- Tout est borné : 120 s par install ou uninstall (300 s pour l'install complète), avec le `timeout` lancé **dans la VM** (un timeout côté hôte ne tue que le client SSH). Logs horodatés dans `~/.cache/bigbox-sandbox/logs/<date>/<release>/<cas>.log`.
+
+- Rapports : `report.md` (régressions, nouveaux échecs, échecs connus, corrigés, avec le contexte de chaque échec) et `junit.xml`, par release, plus un `report.md` global. Les régressions se calculent contre `~/.cache/bigbox-sandbox/logs/baseline/<release>.tsv` (dernier statut connu de chaque test).
+- Outillage Claude : agent `bigbox-testeur` (joue tous les TU et rend le rapport, sans analyse), skills `ecrire-tu-sandbox` (créer ou modifier un TU) et `jouer-tu-sandbox` (lancer les TU sur une release et lire les rapports), dans `.claude/`.
+
+Lint, à lancer sur l'hôte (doit rester sans avertissement) :
+
+```sh
+shellcheck -x bigbox core/*.sh modules/*/*.sh modules/*/dotfiles/*.sh tools/sandbox/*.sh tests/*.sh tests/lib/*.sh tests/cases/*.sh
 helm lint modules/<nom>/helm            # dans la VM si helm n'est pas installé sur l'hôte
 ```
 

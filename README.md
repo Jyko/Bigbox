@@ -282,18 +282,41 @@ La Bigbox modifie réellement la machine sur laquelle elle tourne (`.bashrc`, `~
 Pré-requis sur le poste : `qemu-system-x86_64`, `qemu-img`, un accès à `/dev/kvm`, `ssh`, `rsync`, `python3`, `curl`.
 
 ```sh
-tools/sandbox/sandbox.sh create          # VM Ubuntu 24.04 (ou : create 26.04), snapshot "pristine"
-tools/sandbox/sandbox.sh run install     # synchronise le dépôt puis lance ./bigbox install dans la VM
-tools/sandbox/sandbox.sh run stop -m pg  # n'importe quels arguments de la Bigbox
-tools/sandbox/sandbox.sh ssh             # shell dans la VM
-tools/sandbox/sandbox.sh reset           # retour à une Ubuntu vierge
-tools/sandbox/sandbox.sh destroy         # suppression de la VM
+tools/sandbox/sandbox.sh create                 # VM Ubuntu 24.04, snapshot "pristine"
+tools/sandbox/sandbox.sh -r 26.04 create        # une autre VM, en Ubuntu 26.04
+tools/sandbox/sandbox.sh run install            # synchronise le dépôt puis lance ./bigbox install dans la VM
+tools/sandbox/sandbox.sh -r 26.04 run stop -m pg  # n'importe quels arguments de la Bigbox
+tools/sandbox/sandbox.sh ssh                    # shell dans la VM
+tools/sandbox/sandbox.sh reset                  # retour à une Ubuntu vierge
+tools/sandbox/sandbox.sh status                 # état de toutes les VM
+tools/sandbox/sandbox.sh -r 26.04 destroy       # suppression de la VM
 ```
 
-Seul le port SSH de la VM est redirigé vers l'hôte (`127.0.0.1:2222`) : les services de la Bigbox ne sont joignables que depuis la VM.
+Chaque release a sa propre VM (`-r`, 24.04 par défaut) : plusieurs peuvent tourner en même temps. Une VM utilise 2 vCPU, 4 Go de RAM et au plus 20 Go de disque (variables `BB_SANDBOX_CPUS`, `BB_SANDBOX_MEMORY`, `BB_SANDBOX_DISK_SIZE`).
+
+Seul le port SSH de la VM est redirigé vers l'hôte (`127.0.0.1:22404` pour 24.04, `22604` pour 26.04) : les services de la Bigbox ne sont joignables que depuis la VM.
+
+### Tests
+
+Les tests se rejouent dans la sandbox avec `tests/run.sh`, qui renvoie un code non nul si un cas échoue :
+
+```sh
+tests/run.sh                  # tous les cas, sur Ubuntu 24.04
+tests/run.sh -r 24.04,26.04   # tous les cas, sur 24.04 et 26.04 en parallèle
+tests/run.sh -r 26.04 pg      # un cas, sur Ubuntu 26.04
+```
+
+| Cas | Ce qui est vérifié |
+|---|---|
+| `deps` | Résolution des dépendances avec `-m` (sans rien installer) |
+| `qol` | `install -m catppucin` puis `uninstall -m qol` |
+| `pg` | `install -m pg` (k3s installé automatiquement) puis `uninstall -m k8s` |
+| `full` | Install complète puis uninstall complète |
+
+Avant chaque scénario, la VM revient à son état vierge et un poste déjà utilisé est simulé (htop, fzf, fichiers personnels) : l'uninstall ne doit rien en retirer. Chaque install et chaque uninstall est limitée à 120 s (300 s pour l'install complète, `-t` pour forcer une autre durée). Les logs sont dans `~/.cache/bigbox-sandbox/logs/`.
 
 Le code est vérifié avec `shellcheck` :
 
 ```sh
-shellcheck -x bigbox core/*.sh modules/*/*.sh modules/*/dotfiles/*.sh tools/sandbox/*.sh
+shellcheck -x bigbox core/*.sh modules/*/*.sh modules/*/dotfiles/*.sh tools/sandbox/*.sh tests/*.sh tests/lib/*.sh tests/cases/*.sh
 ```

@@ -8,7 +8,9 @@ set -euo pipefail
 # La Bigbox modifie réellement la machine sur laquelle elle tourne (.bashrc, .config,
 # apt, systemd ...). Ce script crée une VM Ubuntu jetable dans laquelle la lancer.
 #
-# Usage : tools/sandbox/sandbox.sh <commande> [arguments ...]
+# Une VM par release Ubuntu (ex. 24.04 et 26.04), utilisables en parallèle.
+#
+# Usage : tools/sandbox/sandbox.sh [-r <release>] <commande> [arguments ...]
 #################################################################################
 
 BB_SANDBOX_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,31 +25,72 @@ source "$BB_SANDBOX_REPO_DIR/core/log.sh"
 # Configuration (surchargeable par variables d'environnement)
 # --------------------
 BB_SANDBOX_DIR="${BB_SANDBOX_DIR:-$HOME/.cache/bigbox-sandbox}"
-BB_SANDBOX_SSH_PORT="${BB_SANDBOX_SSH_PORT:-2222}"
-BB_SANDBOX_CPUS="${BB_SANDBOX_CPUS:-4}"
-BB_SANDBOX_MEMORY="${BB_SANDBOX_MEMORY:-8G}"
-BB_SANDBOX_DISK_SIZE="${BB_SANDBOX_DISK_SIZE:-40G}"
-BB_SANDBOX_DEFAULT_RELEASE="24.04"
+BB_SANDBOX_RELEASE="${BB_SANDBOX_RELEASE:-24.04}"
+# Dimensionné pour faire tourner 2 à 3 VM en parallèle. Le disque qcow2 est alloué à l'usage :
+# la taille est un maximum, pas une réservation.
+BB_SANDBOX_CPUS="${BB_SANDBOX_CPUS:-2}"
+BB_SANDBOX_MEMORY="${BB_SANDBOX_MEMORY:-4G}"
+BB_SANDBOX_DISK_SIZE="${BB_SANDBOX_DISK_SIZE:-20G}"
 BB_SANDBOX_USER="bigbox"
 BB_SANDBOX_SNAPSHOT="pristine"
 BB_SANDBOX_BOOT_TIMEOUT=300
-
-BB_SANDBOX_VM_DIR="$BB_SANDBOX_DIR/vm"
-BB_SANDBOX_OVERLAY="$BB_SANDBOX_VM_DIR/overlay.qcow2"
-BB_SANDBOX_SSH_KEY="$BB_SANDBOX_VM_DIR/id_ed25519"
-BB_SANDBOX_PID_FILE="$BB_SANDBOX_VM_DIR/qemu.pid"
-BB_SANDBOX_CONSOLE_LOG="$BB_SANDBOX_VM_DIR/console.log"
-BB_SANDBOX_SEED_DIR="$BB_SANDBOX_VM_DIR/seed"
-
-BB_SANDBOX_SSH_OPTS=(
-    -i "$BB_SANDBOX_SSH_KEY"
-    -p "$BB_SANDBOX_SSH_PORT"
-    -o StrictHostKeyChecking=no
-    -o UserKnownHostsFile=/dev/null
-    -o LogLevel=ERROR
-    -o ConnectTimeout=5
-)
 BB_SANDBOX_SSH_TARGET="$BB_SANDBOX_USER@127.0.0.1"
+
+# Chemins et port propres à l'instance de la release choisie (voir _sandbox_configure)
+BB_SANDBOX_VM_DIR=""
+BB_SANDBOX_OVERLAY=""
+BB_SANDBOX_SSH_KEY=""
+BB_SANDBOX_PID_FILE=""
+BB_SANDBOX_CONSOLE_LOG=""
+BB_SANDBOX_SEED_DIR=""
+BB_SANDBOX_SSH_PORT=""
+BB_SANDBOX_SSH_OPTS=()
+
+# Sélectionner l'instance d'une release
+# $1 : La release Ubuntu (ex. 24.04)
+_sandbox_configure() {
+    local release="$1"
+
+    if [[ ! "$release" =~ ^[0-9]{2}\.(04|10)$ ]]; then
+        log_error "Release Ubuntu invalide : $release (attendu : 24.04, 26.04 ...)\n"
+        return 1
+    fi
+
+    BB_SANDBOX_RELEASE="$release"
+    BB_SANDBOX_VM_DIR="$BB_SANDBOX_DIR/vm-$release"
+    BB_SANDBOX_OVERLAY="$BB_SANDBOX_VM_DIR/overlay.qcow2"
+    BB_SANDBOX_SSH_KEY="$BB_SANDBOX_VM_DIR/id_ed25519"
+    BB_SANDBOX_PID_FILE="$BB_SANDBOX_VM_DIR/qemu.pid"
+    BB_SANDBOX_CONSOLE_LOG="$BB_SANDBOX_VM_DIR/console.log"
+    BB_SANDBOX_SEED_DIR="$BB_SANDBOX_VM_DIR/seed"
+    # Port SSH unique et stable par release : 24.04 -> 22404, 26.04 -> 22604
+    BB_SANDBOX_SSH_PORT="${BB_SANDBOX_SSH_PORT_OVERRIDE:-2${release/./}}"
+    BB_SANDBOX_SSH_OPTS=(
+        -i "$BB_SANDBOX_SSH_KEY"
+        -p "$BB_SANDBOX_SSH_PORT"
+        -o StrictHostKeyChecking=no
+        -o UserKnownHostsFile=/dev/null
+        -o LogLevel=ERROR
+        -o ConnectTimeout=5
+    )
+}
+
+# Ancienne disposition (une seule VM dans vm/) : déplacée dans vm-<release>
+_sandbox_migrate_legacy() {
+    local legacy="$BB_SANDBOX_DIR/vm" release
+
+    [[ -f "$legacy/release" ]] || return 0
+    release=$(<"$legacy/release")
+    if [[ -e "$BB_SANDBOX_DIR/vm-$release" ]]; then
+        return 0
+    fi
+    if [[ -f "$legacy/qemu.pid" ]] && kill -0 "$(<"$legacy/qemu.pid")" 2>/dev/null; then
+        log_warn "\tL'ancienne sandbox ($legacy) tourne encore, arrêtez-la avant migration\n"
+        return 0
+    fi
+    mv "$legacy" "$BB_SANDBOX_DIR/vm-$release"
+    log_info "\tSandbox $release déplacée dans $BB_SANDBOX_DIR/vm-$release\n"
+}
 
 # --------------------
 # Utilitaires
@@ -77,7 +120,7 @@ _sandbox_is_created() {
 
 _sandbox_assert_created() {
     if ! _sandbox_is_created; then
-        log_error "Aucune sandbox, lancez d'abord : $0 create\n"
+        log_error "Aucune sandbox $BB_SANDBOX_RELEASE, lancez d'abord : $0 -r $BB_SANDBOX_RELEASE create\n"
         return 1
     fi
 }
@@ -107,7 +150,7 @@ _sandbox_wait_ssh() {
         fi
         sleep 2
     done
-    log_success "\r\t✅ Sandbox joignable en SSH\n"
+    log_success "\r\t✅ Sandbox $BB_SANDBOX_RELEASE joignable en SSH (port $BB_SANDBOX_SSH_PORT)\n"
 }
 
 # Lancer la VM en arrière-plan
@@ -169,8 +212,8 @@ _sandbox_write_seed() {
     mkdir -p "$BB_SANDBOX_SEED_DIR"
 
     cat > "$BB_SANDBOX_SEED_DIR/meta-data" <<EOF
-instance-id: bigbox-sandbox
-local-hostname: bigbox-sandbox
+instance-id: bigbox-sandbox-${BB_SANDBOX_RELEASE/./}
+local-hostname: bigbox-sandbox-${BB_SANDBOX_RELEASE/./}
 EOF
 
     cat > "$BB_SANDBOX_SEED_DIR/user-data" <<EOF
@@ -196,12 +239,12 @@ EOF
 # Commandes
 # --------------------
 sandbox_create() {
-    local release="${1:-$BB_SANDBOX_DEFAULT_RELEASE}"
+    local release="$BB_SANDBOX_RELEASE"
 
     _sandbox_require_tools
 
     if _sandbox_is_created; then
-        log_error "Une sandbox existe déjà, lancez \`$0 destroy\` avant d'en recréer une\n"
+        log_error "La sandbox $release existe déjà, lancez \`$0 -r $release destroy\` avant de la recréer\n"
         return 1
     fi
 
@@ -215,7 +258,7 @@ sandbox_create() {
     qemu-img create -q -f qcow2 -F qcow2 -b "$image_path" "$BB_SANDBOX_OVERLAY" "$BB_SANDBOX_DISK_SIZE"
     echo "$release" > "$BB_SANDBOX_VM_DIR/release"
 
-    ssh-keygen -q -t ed25519 -N "" -C "bigbox-sandbox" -f "$BB_SANDBOX_SSH_KEY"
+    ssh-keygen -q -t ed25519 -N "" -C "bigbox-sandbox-$release" -f "$BB_SANDBOX_SSH_KEY"
 
     _sandbox_write_seed
 
@@ -232,7 +275,7 @@ sandbox_create() {
     _sandbox_boot -smbios "type=1,serial=ds=nocloud;s=http://10.0.2.2:$seed_port/"
 
     _sandbox_ssh cloud-init status --wait >/dev/null || {
-        log_error "cloud-init a échoué, voir \`$0 ssh\` puis /var/log/cloud-init-output.log\n"
+        log_error "cloud-init a échoué, voir \`$0 -r $release ssh\` puis /var/log/cloud-init-output.log\n"
         return 1
     }
 
@@ -268,7 +311,7 @@ sandbox_stop() {
     done
 
     rm -f "$BB_SANDBOX_PID_FILE"
-    log_success "\t✅ Sandbox arrêtée\n"
+    log_success "\t✅ Sandbox $BB_SANDBOX_RELEASE arrêtée\n"
 }
 
 sandbox_sync() {
@@ -313,32 +356,49 @@ sandbox_reset() {
     _sandbox_assert_created
     sandbox_stop
     qemu-img snapshot -a "$BB_SANDBOX_SNAPSHOT" "$BB_SANDBOX_OVERLAY"
-    log_success "\t✅ Sandbox revenue au snapshot \"$BB_SANDBOX_SNAPSHOT\"\n"
+    log_success "\t✅ Sandbox $BB_SANDBOX_RELEASE revenue au snapshot \"$BB_SANDBOX_SNAPSHOT\"\n"
 }
 
 sandbox_destroy() {
     sandbox_stop
     # Les images de base téléchargées sont conservées pour une prochaine création
     rm -rf "${BB_SANDBOX_VM_DIR:?}"
-    log_success "\t✅ Sandbox supprimée\n"
+    log_success "\t✅ Sandbox $BB_SANDBOX_RELEASE supprimée\n"
 }
 
+# État de l'instance choisie (-r), ou de toutes les instances
+# $1 : "all" pour lister toutes les instances
 sandbox_status() {
+    if [[ "${1:-}" == all ]]; then
+        local dir found=false
+        for dir in "$BB_SANDBOX_DIR"/vm-*/; do
+            [[ -f "$dir/overlay.qcow2" ]] || continue
+            found=true
+            _sandbox_configure "$(basename "$dir" | sed 's/^vm-//')"
+            sandbox_status
+        done
+        [[ "$found" == true ]] || log_info "\tAucune sandbox\n"
+        return 0
+    fi
+
     if ! _sandbox_is_created; then
-        log_info "\tAucune sandbox\n"
+        log_info "\tAucune sandbox $BB_SANDBOX_RELEASE\n"
     elif _sandbox_is_running; then
-        log_info "\tSandbox Ubuntu $(<"$BB_SANDBOX_VM_DIR/release") démarrée (ssh -p $BB_SANDBOX_SSH_PORT $BB_SANDBOX_SSH_TARGET)\n"
+        log_info "\tSandbox Ubuntu $BB_SANDBOX_RELEASE démarrée (ssh -p $BB_SANDBOX_SSH_PORT $BB_SANDBOX_SSH_TARGET)\n"
     else
-        log_info "\tSandbox Ubuntu $(<"$BB_SANDBOX_VM_DIR/release") arrêtée\n"
+        log_info "\tSandbox Ubuntu $BB_SANDBOX_RELEASE arrêtée\n"
     fi
 }
 
 sandbox_help() {
-    log_info "\tUsage: $0 <commande> [arguments ...]
+    log_info "\tUsage: $0 [-r <release>] <commande> [arguments ...]
 
-    \t  create [24.04|26.04]    Créer la VM (image cloud vérifiée, cloud-init, snapshot \"$BB_SANDBOX_SNAPSHOT\")
+    \t  -r <release>            Instance visée (défaut $BB_SANDBOX_RELEASE). Une VM par release,
+    \t                          utilisables en parallèle (port SSH 2<release> : 24.04 -> 22404)
+
+    \t  create [<release>]      Créer la VM (image cloud vérifiée, cloud-init, snapshot \"$BB_SANDBOX_SNAPSHOT\")
     \t  start | stop            Démarrer / arrêter la VM
-    \t  status                  Afficher l'état de la VM
+    \t  status                  Afficher l'état de la VM (de toutes les VM sans -r)
     \t  sync                    Copier le dépôt dans ~/Bigbox de la VM
     \t  run <args ...>          Synchroniser puis lancer ./bigbox <args> dans la VM
     \t  exec <commande>         Synchroniser puis lancer une commande dans ~/Bigbox de la VM
@@ -346,18 +406,36 @@ sandbox_help() {
     \t  reset                   Revenir au snapshot \"$BB_SANDBOX_SNAPSHOT\" (Ubuntu vierge)
     \t  destroy                 Supprimer la VM (les images téléchargées sont conservées)
 
-    \tVariables : BB_SANDBOX_DIR, BB_SANDBOX_SSH_PORT, BB_SANDBOX_CPUS, BB_SANDBOX_MEMORY, BB_SANDBOX_DISK_SIZE\n"
+    \tVariables : BB_SANDBOX_DIR, BB_SANDBOX_RELEASE, BB_SANDBOX_CPUS (2), BB_SANDBOX_MEMORY (4G),
+    \t            BB_SANDBOX_DISK_SIZE (20G), BB_SANDBOX_SSH_PORT_OVERRIDE\n"
 }
 
 main() {
+    local release="" status_scope=all
+
+    while [[ "${1:-}" == -r || "${1:-}" == --release ]]; do
+        release="${2:?release attendue après -r}"
+        status_scope=one
+        shift 2
+    done
+
     local command="${1:-help}"
     shift || true
 
+    # Compatibilité : create <release>
+    if [[ "$command" == create && -n "${1:-}" ]]; then
+        release="$1"
+        shift
+    fi
+
+    _sandbox_migrate_legacy
+    _sandbox_configure "${release:-$BB_SANDBOX_RELEASE}"
+
     case "$command" in
-        create)  sandbox_create "$@" ;;
+        create)  sandbox_create ;;
         start)   sandbox_start ;;
         stop)    sandbox_stop ;;
-        status)  sandbox_status ;;
+        status)  sandbox_status "$status_scope" ;;
         sync)    sandbox_sync ;;
         run)     sandbox_run "$@" ;;
         exec)    sandbox_exec "$@" ;;
