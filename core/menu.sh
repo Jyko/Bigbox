@@ -73,8 +73,8 @@ _menu_help() {
     \t-----------------------------------------------------------------
     \t  Actions         Modulaire               Description             
     \t-----------------------------------------------------------------
-    \t  install         ❌                      Installer la BigBox     
-    \t  uninstall       ❌                      Désinstaller la BigBox  
+    \t  install         ✅                      Installer la BigBox     
+    \t  uninstall       ✅                      Désinstaller la BigBox  
     \t  start           ✅                      Démarrer les outils     
     \t  stop            ✅                      Eteindre les outils     
     \t  upgrade         ✅                      Mettre à jour les outils
@@ -87,7 +87,9 @@ _menu_help() {
     \t  [ -s | --silent ]                       Activer le mode silencieux, seules les erreurs sont loggées
     \t  [ -v | --version ]                      Afficher la version
     \t  [ -b | --banner ]                       Afficher la bannière
-    \t  [ -m | --module ] <mod1,mod2,...>       Filtrer les modules à exécuter si l'action selectionnée permet une exécution modulaire\n"
+    \t  [ -m | --module ] <mod1,mod2,...>       Filtrer les modules à exécuter si l'action sélectionnée permet une exécution modulaire.
+    \t                                          install, start, upgrade : les dépendances sont ajoutées (install -m pg installe k8s).
+    \t                                          uninstall, stop : les modules dépendants sont ajoutés (uninstall -m pg retire hoppscotch).\n"
 }
 
 menu_show() {

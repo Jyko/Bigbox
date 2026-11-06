@@ -17,6 +17,8 @@ BB_CFG_ENTRYPOINT_FILENAME="bigbox.sh"
 BB_CFG_ENTRYPOINT_FILE="$BB_CFG_DIR/$BB_CFG_ENTRYPOINT_FILENAME"
 
 BB_CFG_DOTFILES_DIR="$BB_CFG_DIR/dotfiles"
+# Registre de ce que la Bigbox a installé ou créé (voir core/state_utils.sh)
+BB_STATE_FILE="$BB_CFG_DIR/state/owned"
 BB_CFG_ENV_FILE="$BB_CFG_DOTFILES_DIR/env.sh"
 
 # KUBERNETES

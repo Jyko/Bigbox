@@ -3,5 +3,6 @@
     "description": "Gestion de l'instance Hoppscotch",
     "priority": 340,
     "entrypoint": "hoppscotch.sh",
+    "dependencies": ["k8s", "pg"],
     "actions": ["install", "uninstall", "start", "stop", "upgrade"]
 }

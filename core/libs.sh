@@ -25,5 +25,7 @@ source "$BB_CORE_DIR/menu.sh"
 source "$BB_CORE_DIR/module.sh"
 # shellcheck source=core/utils.sh
 source "$BB_CORE_DIR/utils.sh"
+# shellcheck source=core/state_utils.sh
+source "$BB_CORE_DIR/state_utils.sh"
 # shellcheck source=core/ssh_utils.sh
 source "$BB_CORE_DIR/ssh_utils.sh"

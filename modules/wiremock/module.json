@@ -3,5 +3,6 @@
     "description": "Gestion de l'instance Wiremock",
     "priority": 330,
     "entrypoint": "wiremock.sh",
+    "dependencies": ["k8s"],
     "actions": ["install", "uninstall", "start", "stop", "upgrade"]
 }

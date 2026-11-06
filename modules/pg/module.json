@@ -3,5 +3,6 @@
     "description": "Gestion de l'instance de PostgreSQL et de ses outils (postgresql-client)",
     "priority": 300,
     "entrypoint": "pg.sh",
+    "dependencies": ["k8s"],
     "actions": ["install", "uninstall", "start", "stop", "upgrade"]
 }

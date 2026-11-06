@@ -4,45 +4,39 @@
 # Liste des modules chargés ordonnée par priorité d'exécution
 declare -A MODULES=()
 
+# Index de tous les modules disponibles : nom -> chemin de son module.json
+declare -A MODULE_DESCRIPTORS=()
+# Index des priorités : nom -> priorité
+declare -A MODULE_PRIORITIES=()
+# Modules retenus pour l'action (liste fournie par -m, complétée par la résolution des dépendances)
+declare -A MODULE_SELECTION=()
+
 module_load() {
 
-    # Charger tous les modules
-    for module in "$BB_MOD_DIR"/*/module.json; do
+    _module_index
+    _module_resolve_selection
 
-        local path name priority entrypoint
+    local name descriptor entrypoint priority
+    for name in "${!MODULE_SELECTION[@]}"; do
 
-        # Récupérer le root path du module
-        path=$(dirname "$module")
+        descriptor="${MODULE_DESCRIPTORS[$name]}"
+        priority="${MODULE_PRIORITIES[$name]}"
+        entrypoint="$(dirname "$descriptor")/$(jq -r '.entrypoint // empty' "$descriptor")"
 
-        # "// empty" : une propriété absente donne une chaîne vide et non "null"
-        name=$(jq -r '.name // empty' "$module")
-        priority=$(jq -r '.priority // empty' "$module")
-        entrypoint="$path/$(jq -r '.entrypoint // empty' "$module")"
-        
-        log_debug "\r\t⏳ Chargement du module $module"
+        log_debug "\r\t⏳ Chargement du module $name"
 
-        if ! _module_verify -n="$name" -p="$priority" -e="$entrypoint"; then
-            log_error "Le chargement du descripteur de module $path/module.json a échoué\n"
-            exit 1
+        # Un module retenu (par exemple par dépendance) peut ne pas déclarer l'action : il est simplement ignoré
+        if ! _module_has_declared_action "$descriptor"; then
+            log_debug "\r\t⏭️ Le module $name ne déclare pas l'action $ACTION\n"
+            continue
         fi
 
-        if _module_is_whitelisted "$name" && _module_has_declared_action "$module"; then
+        # shellcheck source=/dev/null
+        source "$entrypoint"
 
-            # Deux modules de même priorité s'écraseraient dans MODULES, l'un des deux ne serait jamais exécuté
-            if [[ -n "${MODULES[$priority]:-}" ]]; then
-                log_error "Les modules ${MODULES[$priority]} et $name ont la même priorité $priority\n"
-                exit 1
-            fi
+        MODULES["$priority"]="$name"
 
-            # shellcheck source=/dev/null
-            source "$entrypoint"
-
-            MODULES["$priority"]="$name"
-
-            log_debug "\r\t✅ Chargement réussi du module $module\n"
-        else
-            log_debug "\r\t⏭️ Chargement abandonné du module $module\n"
-        fi
+        log_debug "\r\t✅ Chargement réussi du module $name\n"
     done
 
     # Chargement terminé, nous passons la variable globale MODULES en readonly, nous n'avons plus aucune raison de la modifier à partir de maintenant.
@@ -52,6 +46,119 @@ module_load() {
         log_warn "\r\t❗ Aucun module chargé, vérifiez la compatibilité des modules listés avec l'action demandée\n"
     fi
 
+}
+
+# Indexer et valider tous les descripteurs de modules (modules/*/module.json)
+_module_index() {
+    local descriptor path name priority entrypoint
+    declare -A seen_priorities=()
+
+    for descriptor in "$BB_MOD_DIR"/*/module.json; do
+        path=$(dirname "$descriptor")
+
+        # "// empty" : une propriété absente donne une chaîne vide et non "null"
+        name=$(jq -r '.name // empty' "$descriptor")
+        priority=$(jq -r '.priority // empty' "$descriptor")
+        entrypoint="$path/$(jq -r '.entrypoint // empty' "$descriptor")"
+
+        if ! _module_verify -n="$name" -p="$priority" -e="$entrypoint"; then
+            log_error "Le chargement du descripteur de module $descriptor a échoué\n"
+            exit 1
+        fi
+
+        # Deux modules de même priorité s'écraseraient dans MODULES, l'un des deux ne serait jamais exécuté
+        if [[ -n "${seen_priorities[$priority]:-}" ]]; then
+            log_error "Les modules ${seen_priorities[$priority]} et $name ont la même priorité $priority\n"
+            exit 1
+        fi
+        seen_priorities["$priority"]="$name"
+
+        MODULE_DESCRIPTORS["$name"]="$descriptor"
+        MODULE_PRIORITIES["$name"]="$priority"
+    done
+
+    # Une dépendance doit exister et passer avant le module qui en dépend (priorité inférieure),
+    # sinon l'ordre d'exécution par priorité ne respecterait pas les dépendances.
+    local dep
+    for name in "${!MODULE_DESCRIPTORS[@]}"; do
+        while IFS= read -r dep; do
+            [[ -z "$dep" ]] && continue
+            if [[ -z "${MODULE_DESCRIPTORS[$dep]:-}" ]]; then
+                log_error "Le module $name dépend du module inconnu $dep\n"
+                exit 1
+            fi
+            if (( MODULE_PRIORITIES[$dep] >= MODULE_PRIORITIES[$name] )); then
+                log_error "Le module $name (priorité ${MODULE_PRIORITIES[$name]}) dépend de $dep (priorité ${MODULE_PRIORITIES[$dep]}) : une dépendance doit avoir une priorité inférieure\n"
+                exit 1
+            fi
+        done < <(jq -r '.dependencies[]?' "${MODULE_DESCRIPTORS[$name]}")
+    done
+}
+
+# Retourner sur stdout les dépendances directes d'un module
+# $1 : Le nom du module
+_module_dependencies() {
+    jq -r '.dependencies[]?' "${MODULE_DESCRIPTORS[$1]}"
+}
+
+# Retourner sur stdout les modules qui dépendent directement d'un module
+# $1 : Le nom du module
+_module_dependents() {
+    local name
+    for name in "${!MODULE_DESCRIPTORS[@]}"; do
+        if jq -e --arg dep "$1" '(.dependencies // []) | index($dep)' "${MODULE_DESCRIPTORS[$name]}" >/dev/null; then
+            echo "$name"
+        fi
+    done
+}
+
+# Construire MODULE_SELECTION à partir de la liste -m et du sens de résolution de l'action :
+# - forward (install, start, upgrade) : ajout des dépendances, ex. install -m pg installe aussi k8s (k3s)
+# - reverse (uninstall, stop)         : ajout des dépendants, ex. uninstall -m pg désinstalle aussi hoppscotch
+# Sans -m, tous les modules sont retenus.
+_module_resolve_selection() {
+    local name
+
+    if (( ${#MODULE_WHITELIST[@]} == 0 )); then
+        for name in "${!MODULE_DESCRIPTORS[@]}"; do
+            MODULE_SELECTION["$name"]=1
+        done
+        return 0
+    fi
+
+    local direction
+    direction=$(action_get_property "dependencies" "forward")
+
+    local queue=()
+    for name in "${MODULE_WHITELIST[@]}"; do
+        if [[ -z "${MODULE_DESCRIPTORS[$name]:-}" ]]; then
+            log_error "\r\t❌ Module inconnu : $name\n"
+            exit 1
+        fi
+        queue+=("$name")
+    done
+
+    local current related
+    local added=()
+    while (( ${#queue[@]} > 0 )); do
+        current="${queue[0]}"
+        queue=("${queue[@]:1}")
+
+        [[ -n "${MODULE_SELECTION[$current]:-}" ]] && continue
+        MODULE_SELECTION["$current"]=1
+
+        while IFS= read -r related; do
+            [[ -z "$related" || -n "${MODULE_SELECTION[$related]:-}" ]] && continue
+            queue+=("$related")
+            added+=("$related")
+        done < <(if [[ "$direction" == "reverse" ]]; then _module_dependents "$current"; else _module_dependencies "$current"; fi)
+    done
+
+    if (( ${#added[@]} > 0 )); then
+        local label="dépendances"
+        [[ "$direction" == "reverse" ]] && label="modules dépendants"
+        log_info "\t🔗 Ajout des $label : $(printf '%s\n' "${added[@]}" | sort -u | paste -sd ' ')\n"
+    fi
 }
 
 module_run() {
@@ -102,6 +209,13 @@ module_run() {
 
     trap - ERR
     set +o errtrace
+
+    # Dépendances apt devenues orphelines après la purge des paquets des modules (ex. pigz, libpq5)
+    if [[ "$(action_get_property "autoremove" "false")" == "true" ]]; then
+        log_success "\t⏳ Suppression des paquets orphelins (apt autoremove)"
+        apt_wrapper autoremove
+        log_success "\r\t✅ Suppression des paquets orphelins (apt autoremove)\n"
+    fi
 
     if [[ "$is_reboot_wanted" == "true" ]]; then
         log_warn "\r\t ⚠️ Relancez votre shell ou executez \`source \$HOME/.bashrc\` pour prendre en compte la nouvelle configuration du shell ⚠️\n"
@@ -210,29 +324,4 @@ _module_has_declared_action() {
         log_debug "Le descripteur de module \"$module_file_path\" ne contient pas l'action $ACTION\n"
         return 1
     fi
-}
-
-# Retourne 0 si le module est whitelisté
-# Retourne 1 si le module n'est pas whitelisté
-# Exit 2 si le module est null ou blanc
-_module_is_whitelisted() {
-    local module_name="$1"
-
-    if [[ -z "$module_name" ]]; then
-        log_error "Le nom du module à tester en obligatoire\n"
-        exit 2
-    fi
-
-    # Si l'utilisateur n'a pas fourni de whitelist, tous les modules sont acceptés
-    [[ ${#MODULE_WHITELIST[@]} -eq 0 ]] && return 0
-
-    for wm in "${MODULE_WHITELIST[@]}"; do
-        if [[ "$wm" == "$module_name" ]]; then
-            log_debug "Le module $module_name est whitelisté\n"
-            return 0
-        fi
-    done
-
-    log_debug "Le module $module_name n'est pas whitelisté\n"
-    return 1
 }

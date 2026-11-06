@@ -11,7 +11,7 @@ BB_DOCKER_PACKAGES=(
     docker-ce-rootless-extras
 )
 
-# Packages conflictuels désinstallés
+# Packages en conflit avec docker-ce, désinstallés avant son installation
 BB_DOCKER_CONFLICT_PACKAGES=(
     docker.io
     docker-compose
@@ -22,37 +22,49 @@ BB_DOCKER_CONFLICT_PACKAGES=(
     runc
 )
 
+BB_DOCKER_APT_KEY_FILE="/etc/apt/keyrings/docker.asc"
+BB_DOCKER_APT_SOURCE_FILE="/etc/apt/sources.list.d/docker.sources"
+
 # Installer Docker
 docker_install() {
 
-    # Désinstaller les paquets qui pourraient entrer en conflit
-    apt_purge_installed "${BB_DOCKER_CONFLICT_PACKAGES[@]}" || true
-
-    # Nous vérifions après la purge des packages conflictuels si docker est bien installé
+    # Un Docker déjà présent (docker.io, Docker Desktop ...) est respecté : ni purge, ni réinstallation
     if _docker_verify; then
         return 0
     fi
 
-    # Ajout de la clef GPG Docker
-    sudo install -m 0755 -d /etc/apt/keyrings
-    sudo curl "${BB_CURL_OPTS[@]}" https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    sudo chmod a+r /etc/apt/keyrings/docker.asc
+    # Désinstaller les paquets en conflit avec docker-ce (containerd, runc ... installés sans Docker)
+    local conflict
+    for conflict in "${BB_DOCKER_CONFLICT_PACKAGES[@]}"; do
+        if apt_is_installed "$conflict"; then
+            apt_wrapper purge "$conflict"
+        fi
+    done
 
-    # Add the repository to Apt sources:
-    sudo tee /etc/apt/sources.list.d/docker.sources >/dev/null <<EOF
-Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
-Components: stable
-Signed-By: /etc/apt/keyrings/docker.asc
-EOF
+    # Ajout de la clef GPG et du dépôt Docker (conservés en l'état s'ils existent déjà)
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl "${BB_CURL_OPTS[@]}" https://download.docker.com/linux/ubuntu/gpg | state_create_file "$BB_DOCKER_APT_KEY_FILE"
+    sudo chmod a+r "$BB_DOCKER_APT_KEY_FILE"
+
+    local codename
+    codename=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+    printf '%s\n' \
+        "Types: deb" \
+        "URIs: https://download.docker.com/linux/ubuntu" \
+        "Suites: $codename" \
+        "Components: stable" \
+        "Signed-By: $BB_DOCKER_APT_KEY_FILE" \
+        | state_create_file "$BB_DOCKER_APT_SOURCE_FILE"
 
     # Installation des packages
     apt_wrapper update
-    apt_wrapper install "${BB_DOCKER_PACKAGES[@]}"
+    apt_install "${BB_DOCKER_PACKAGES[@]}"
 
     # Ajouter l'utilisateur au groupe Docker, ne sera pris en compte qu'au prochain redémarrage du conteneur WSL2
-    sudo groupadd -f docker
+    if ! getent group docker >/dev/null 2>&1; then
+        sudo groupadd docker
+        state_mark_owned "group:docker"
+    fi
     sudo usermod -aG docker "$USER"
 
     # Enregistrer le service Docker et le démarrer avec le conteneur WSL2 (et tout de suite :D)
@@ -63,45 +75,26 @@ EOF
 
 docker_uninstall() {
 
-    # Pas besoin de verify, tout est idempotent dans les commandes de suppression
-
-    # Nous supprimons les packages installés et les potentiels packages à conflit pour qu'une future installation se fasse sur des bases saines
-    apt_purge_installed "${BB_DOCKER_PACKAGES[@]}" "${BB_DOCKER_CONFLICT_PACKAGES[@]}" || true
-
-    # Suppression des images, conteneurs, volumes ...
-    sudo rm -rf /var/lib/docker
-    sudo rm -rf /var/lib/containerd
-
-    # Suppression du repository et de la GPG Docker
-    sudo rm -f /etc/apt/sources.list.d/docker.sources
-    sudo rm -f /etc/apt/keyrings/docker.asc
-
-    # Supprimer le groupe docker
-    if getent group docker >/dev/null 2>&1; then
-        sudo groupdel docker
+    # Rien n'est touché si Docker n'a pas été installé par la Bigbox (Docker préexistant)
+    if ! state_is_owned "apt:docker-ce"; then
+        log_debug "Docker n'a pas été installé par la Bigbox, il est conservé \n"
+        return 0
     fi
 
-    _docker_network_uninstall
+    apt_purge_owned "${BB_DOCKER_PACKAGES[@]}" || true
 
-}
+    # Suppression des images, conteneurs, volumes ... du Docker installé par la Bigbox
+    sudo rm -rf /var/lib/docker /var/lib/containerd
 
-# Retirer le bridge docker0 et les règles iptables DOCKER*, que la purge des paquets laisse en place
-_docker_network_uninstall() {
-    if ip link show docker0 >/dev/null 2>&1; then
-        sudo ip link delete docker0 || true
-    fi
+    state_remove_owned_files "$BB_DOCKER_APT_SOURCE_FILE" "$BB_DOCKER_APT_KEY_FILE"
 
-    # Les règles sont capturées dans une variable plutôt que testées via "iptables-save | grep -q" :
-    # avec pipefail, la sortie anticipée de grep -q (SIGPIPE) ferait échouer le test.
-    local cmd rules
-    for cmd in iptables ip6tables; do
-        command -v "$cmd-save" >/dev/null 2>&1 || continue
-        rules=$(sudo "$cmd-save")
-        # Insensible à la casse : chaînes DOCKER* mais aussi règles sur l'interface docker0 (MASQUERADE)
-        if [[ "${rules,,}" == *docker* ]]; then
-            grep -vi docker <<< "$rules" | sudo "$cmd-restore"
+    if state_is_owned "group:docker"; then
+        if getent group docker >/dev/null 2>&1; then
+            sudo groupdel docker
         fi
-    done
+        state_unmark "group:docker"
+    fi
+
 }
 
 _docker_verify() {

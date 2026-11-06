@@ -60,25 +60,64 @@ apt_wrapper() {
     fi
 }
 
-# Purger uniquement ceux de ces paquets qui sont installés.
-# apt-get purge échoue (et logge une erreur) sur un paquet inconnu des dépôts, par exemple un outil
-# installé depuis GitHub faute de paquet sur cette version d'Ubuntu.
-# $@ : Les paquets à purger
-apt_purge_installed() {
-    local pkg
-    local installed=()
+# Retourne 0 si ce paquet est installé
+# $1 : Le nom du paquet
+apt_is_installed() {
+    dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "ok installed"
+}
 
-    for pkg in "$@"; do
-        if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            installed+=("$pkg")
+# Installer des paquets (noms ou fichiers .deb) et enregistrer dans le registre ceux qui ne l'étaient pas.
+# Les paquets déjà présents ne sont pas réinstallés : apt les marquerait comme installés manuellement,
+# et ils ne seront jamais purgés à la désinstallation.
+# $@ : Les paquets ou fichiers .deb
+apt_install() {
+    local arg pkg
+    local to_install=() to_mark=()
+
+    for arg in "$@"; do
+        if [[ "$arg" == *.deb ]]; then
+            pkg=$(dpkg-deb -f "$arg" Package)
+        else
+            pkg="$arg"
+        fi
+
+        if ! apt_is_installed "$pkg"; then
+            to_install+=("$arg")
+            to_mark+=("$pkg")
         fi
     done
 
-    if (( ${#installed[@]} == 0 )); then
+    if (( ${#to_install[@]} == 0 )); then
         return 0
     fi
 
-    apt_wrapper purge "${installed[@]}"
+    apt_wrapper install "${to_install[@]}"
+
+    for pkg in "${to_mark[@]}"; do
+        state_mark_owned "apt:$pkg"
+    done
+}
+
+# Purger, parmi ces paquets, uniquement ceux que la Bigbox a installés (voir apt_install).
+# Un paquet présent avant la Bigbox (ex. htop sur un Ubuntu Desktop) est conservé.
+# $@ : Les paquets à purger
+apt_purge_owned() {
+    local pkg
+    local owned=()
+
+    for pkg in "$@"; do
+        if state_is_owned "apt:$pkg" && apt_is_installed "$pkg"; then
+            owned+=("$pkg")
+        fi
+    done
+
+    if (( ${#owned[@]} > 0 )); then
+        apt_wrapper purge "${owned[@]}"
+    fi
+
+    for pkg in "$@"; do
+        state_unmark "apt:$pkg"
+    done
 }
 
 # Les variables de contrôle (SHOW_*) sont lues par menu.sh

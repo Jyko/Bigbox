@@ -2,26 +2,32 @@
     "install": {
         "order": "asc",
         "reboot": "true",
-        "modulable": "false"
+        "modulable": "true",
+        "dependencies": "forward"
     },
     "uninstall": {
         "order": "desc",
         "reboot": "true",
-        "modulable": "false"
+        "modulable": "true",
+        "dependencies": "reverse",
+        "autoremove": "true"
     },
     "start": {
         "order": "asc",
         "reboot": "false",
-        "modulable": "true"
+        "modulable": "true",
+        "dependencies": "forward"
     },
     "stop": {
         "order": "desc",
         "reboot": "false",
-        "modulable": "true"
+        "modulable": "true",
+        "dependencies": "reverse"
     },
     "upgrade": {
         "order": "asc",
         "reboot": "true",
-        "modulable": "true"
+        "modulable": "true",
+        "dependencies": "forward"
     }
 }

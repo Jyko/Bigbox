@@ -9,7 +9,7 @@ BB_CATPPUCIN_BAT_THEME_LINE="--theme=\"Catppuccin Mocha\""
 # La malveillance maximum, ici on install Catppuccin Mocha PARTOUT ! :sdk:
 catppucin_install() {
 
-    apt_wrapper install vivid
+    apt_install vivid
 
     # LS_COLOR
     cfg_copy_dotfile "$BB_CATPPUCIN_DOTFILES_DIR/catppucin_env.sh"
@@ -21,6 +21,7 @@ catppucin_install() {
 
     if [[ ! -f "$bat_themes_dir/$BB_CATPPUCIN_BAT_THEME_FILE" ]]; then
         run_cmd wget --tries=3 -P "$bat_themes_dir" "https://github.com/catppuccin/bat/raw/main/themes/Catppuccin%20Mocha.tmTheme"
+        state_mark_owned "file:$bat_themes_dir/$BB_CATPPUCIN_BAT_THEME_FILE"
         run_cmd batcat cache --build
     fi
 
@@ -48,12 +49,14 @@ catppucin_uninstall() {
             cfg_set_line -p="$BB_CATPPUCIN_BAT_THEME_LINE" -l="" -f="$bat_config_file"
         fi
 
-        if [[ -f "$bat_theme_path" ]]; then
+        # Le thème n'est supprimé que s'il a été téléchargé par la Bigbox
+        if state_is_owned "file:$bat_theme_path"; then
             rm -f "$bat_theme_path"
+            state_unmark "file:$bat_theme_path"
             run_cmd batcat cache --build
         fi
     fi
 
-    apt_purge_installed vivid || true
+    apt_purge_owned vivid || true
 
 }

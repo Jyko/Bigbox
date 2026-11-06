@@ -16,6 +16,7 @@ starship_install() {
     if [[ ! -f "$BB_STARSHIP_CONFIG_FILE" ]]; then
         mkdir -p "$(dirname "$BB_STARSHIP_CONFIG_FILE")"
         starship print-config > "$BB_STARSHIP_CONFIG_FILE"
+        state_mark_owned "file:$BB_STARSHIP_CONFIG_FILE"
     fi
 
     cfg_copy_dotfile "$BB_STARSHIP_DOTFILES_DIR/starship_env.sh"
@@ -26,9 +27,14 @@ starship_uninstall() {
 
     cfg_delete_dotfile "starship_env.sh"
 
-    rm -f "$BB_STARSHIP_CONFIG_FILE"
-    apt_purge_installed starship || true
-    sudo rm -f "$BB_STARSHIP_BINARY"
+    # La configuration n'est supprimée que si c'est la Bigbox qui l'a générée
+    if state_is_owned "file:$BB_STARSHIP_CONFIG_FILE"; then
+        rm -f "$BB_STARSHIP_CONFIG_FILE"
+        state_unmark "file:$BB_STARSHIP_CONFIG_FILE"
+    fi
+
+    apt_purge_owned starship || true
+    state_remove_owned_files "$BB_STARSHIP_BINARY"
 
 }
 
@@ -39,7 +45,7 @@ _starship_binary_install() {
     fi
 
     if apt-cache show starship >/dev/null 2>&1; then
-        apt_wrapper install starship
+        apt_install starship
         return 0
     fi
 
@@ -57,6 +63,7 @@ _starship_binary_install() {
         "https://github.com/starship/starship/releases/download/${BB_STARSHIP_VERSION}/starship-${arch}-unknown-linux-musl.tar.gz"
     tar -xzf "$tmp/starship.tar.gz" -C "$tmp" starship
     sudo install -m 0755 "$tmp/starship" "$BB_STARSHIP_BINARY"
+    state_mark_owned "file:$BB_STARSHIP_BINARY"
 
     rm -rf "${tmp:?}"
 }

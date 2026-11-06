@@ -3,5 +3,6 @@
     "description": "Gestion du prompt shell Starship",
     "priority": 800,
     "entrypoint": "starship.sh",
+    "dependencies": ["core"],
     "actions": ["install", "uninstall"]
 }

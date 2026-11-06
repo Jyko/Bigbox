@@ -14,7 +14,7 @@ pg_install() {
 
     if ! _pg_client_verify; then
         _pg_apt_repository_install
-        apt_wrapper install "postgresql-client-$BB_PG_VERSION"
+        apt_install "postgresql-client-$BB_PG_VERSION"
     fi
 
     run_cmd kutils_release_upgrade "$BB_PG_HELM_RELEASE_NAME" "$BB_PG_MODULE_HELM_DIR"
@@ -22,7 +22,7 @@ pg_install() {
 
 pg_uninstall() {
 
-    apt_purge_installed "postgresql-client-$BB_PG_VERSION" || true
+    apt_purge_owned "postgresql-client-$BB_PG_VERSION" || true
     _pg_apt_repository_uninstall
 
     if run_cmd_silently kutils_is_api_available; then
@@ -47,17 +47,18 @@ _pg_apt_repository_install() {
     codename=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
 
     sudo install -m 0755 -d "$(dirname "$BB_PG_APT_KEY_FILE")"
-    run_cmd sudo curl "${BB_CURL_OPTS[@]}" https://www.postgresql.org/media/keys/ACCC4CF8.asc -o "$BB_PG_APT_KEY_FILE"
+    # Dépôt et clé conservés en l'état s'ils existent déjà (pgdg.list est le nom donné par la doc officielle)
+    curl "${BB_CURL_OPTS[@]}" https://www.postgresql.org/media/keys/ACCC4CF8.asc | state_create_file "$BB_PG_APT_KEY_FILE"
     sudo chmod 644 "$BB_PG_APT_KEY_FILE"
 
     echo "deb [signed-by=$BB_PG_APT_KEY_FILE] https://apt.postgresql.org/pub/repos/apt ${codename}-pgdg main" \
-        | fs_file_replace "$BB_PG_APT_SOURCE_FILE"
+        | state_create_file "$BB_PG_APT_SOURCE_FILE"
 
     apt_wrapper update
 }
 
 _pg_apt_repository_uninstall() {
-    sudo rm -f "$BB_PG_APT_SOURCE_FILE" "$BB_PG_APT_KEY_FILE"
+    state_remove_owned_files "$BB_PG_APT_SOURCE_FILE" "$BB_PG_APT_KEY_FILE"
 }
 
 _pg_client_verify() {

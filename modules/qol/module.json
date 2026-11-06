@@ -3,5 +3,6 @@
     "description": "Un maximum de Quality Of Life",
     "priority": 1000,
     "entrypoint": "qol.sh",
+    "dependencies": ["core"],
     "actions": ["install", "uninstall"]
 }

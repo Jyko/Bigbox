@@ -3,5 +3,6 @@
     "description": "Gestion du noeud NATS et des outils associés (nats-cli)",
     "priority": 310,
     "entrypoint": "nats.sh",
+    "dependencies": ["k8s"],
     "actions": ["install", "uninstall", "start", "stop", "upgrade"]
 }

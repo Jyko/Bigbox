@@ -22,6 +22,11 @@ BB_K8S_K3S_VERSION="v1.37.2+k3s1"
 BB_K8S_KUBECTL_MINOR_VERSION="v1.37"
 BB_K8S_KUBECOLOR_VERSION="0.8.0"
 
+BB_K8S_KUBERNETES_APT_KEY_FILE="/etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+BB_K8S_KUBERNETES_APT_SOURCE_FILE="/etc/apt/sources.list.d/kubernetes.list"
+BB_K8S_HELM_APT_KEY_FILE="/usr/share/keyrings/helm.gpg"
+BB_K8S_HELM_APT_SOURCE_FILE="/etc/apt/sources.list.d/helm-stable-debian.list"
+
 k8s_install() {
 
     _k8s_k3s_install
@@ -71,6 +76,8 @@ _k8s_k3s_install() {
         sh "$tmp/k3s-install.sh"
     rm -rf "${tmp:?}"
 
+    state_mark_owned "k3s"
+
 }
 
 # Supprimer le lien kubectl -> k3s laissé par une installation antérieure de k3s (voir INSTALL_K3S_SYMLINK)
@@ -83,17 +90,24 @@ _k8s_k3s_remove_kubectl_symlink() {
 
 _k8s_k3s_uninstall() {
 
+    # Un k3s présent avant la Bigbox n'est jamais désinstallé
+    if ! state_is_owned "k3s"; then
+        log_debug "k3s n'a pas été installé par la Bigbox, il est conservé \n"
+        return 0
+    fi
+
     # Désinstaller k3s via le script fourni par son installeur (binaires, services, données du cluster)
     if _k8s_k3s_verify; then
         run_cmd sudo "$BB_K8S_K3S_UNINSTALL_SCRIPT"
     fi
 
     # Restes laissés par le script : cgroups vides des pods, mot de passe du noeud, répertoires parents.
-    # rmdir --ignore-fail-on-non-empty : on ne supprime /etc/rancher et /var/lib/rancher que s'ils sont vides
-    # (ils peuvent héberger d'autres produits Rancher).
+    # rmdir --ignore-fail-on-non-empty : on ne supprime /etc/rancher et /var/lib/rancher que s'ils sont vides.
     sudo systemctl stop kubepods.slice >/dev/null 2>&1 || true
     sudo rm -rf /etc/rancher/node
     sudo rmdir --ignore-fail-on-non-empty /etc/rancher /var/lib/rancher 2>/dev/null || true
+
+    state_unmark "k3s"
 }
 
 # --------------------
@@ -112,24 +126,24 @@ _k8s_tools_install() {
         return 0
     fi
 
-    # Ajouter le répo officiel Kubernetes
+    # Ajouter les dépôts officiels Kubernetes et Helm (conservés en l'état s'ils existent déjà)
     sudo mkdir -p -m 755 /etc/apt/keyrings
-    curl "${BB_CURL_OPTS[@]}" "https://pkgs.k8s.io/core:/stable:/$BB_K8S_KUBECTL_MINOR_VERSION/deb/Release.key" | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    fs_file_replace /etc/apt/sources.list.d/kubernetes.list <<< \
-    "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/$BB_K8S_KUBECTL_MINOR_VERSION/deb/ /"
-    sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
+    curl "${BB_CURL_OPTS[@]}" "https://pkgs.k8s.io/core:/stable:/$BB_K8S_KUBECTL_MINOR_VERSION/deb/Release.key" \
+        | gpg --batch --dearmor | state_create_file "$BB_K8S_KUBERNETES_APT_KEY_FILE"
+    echo "deb [signed-by=$BB_K8S_KUBERNETES_APT_KEY_FILE] https://pkgs.k8s.io/core:/stable:/$BB_K8S_KUBECTL_MINOR_VERSION/deb/ /" \
+        | state_create_file "$BB_K8S_KUBERNETES_APT_SOURCE_FILE"
 
-    # Ajouter le répo officiel de Helm
-    curl "${BB_CURL_OPTS[@]}" https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
-    sudo tee /etc/apt/sources.list.d/helm-stable-debian.list > /dev/null <<< \
-    'deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main'
+    curl "${BB_CURL_OPTS[@]}" https://packages.buildkite.com/helm-linux/helm-debian/gpgkey \
+        | gpg --batch --dearmor | state_create_file "$BB_K8S_HELM_APT_KEY_FILE"
+    echo "deb [signed-by=$BB_K8S_HELM_APT_KEY_FILE] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main" \
+        | state_create_file "$BB_K8S_HELM_APT_SOURCE_FILE"
+    sudo chmod 644 "$BB_K8S_KUBERNETES_APT_KEY_FILE" "$BB_K8S_KUBERNETES_APT_SOURCE_FILE" "$BB_K8S_HELM_APT_KEY_FILE" "$BB_K8S_HELM_APT_SOURCE_FILE"
 
     # Mettre à jour la liste des répos avant d'installer les outils
     apt_wrapper update
 
     # Kubectl, Kubectx et Helm
-    apt_wrapper install kubectl kubectx helm
+    apt_install kubectl kubectx helm
 
     # Kubecolor : version épinglée, téléchargée dans un répertoire temporaire privé
     # (et non dans /tmp/kubecolor.deb, un chemin prévisible exposé aux attaques par lien symbolique)
@@ -138,20 +152,17 @@ _k8s_tools_install() {
     tmp=$(mktemp -d)
     run_cmd curl "${BB_CURL_OPTS[@]}" -o "$tmp/kubecolor.deb" \
         "https://github.com/kubecolor/kubecolor/releases/download/v$BB_K8S_KUBECOLOR_VERSION/kubecolor_${BB_K8S_KUBECOLOR_VERSION}_linux_${arch}.deb"
-    apt_wrapper install "$tmp/kubecolor.deb"
+    apt_install "$tmp/kubecolor.deb"
     rm -rf "${tmp:?}"
 }
 
 _k8s_tools_uninstall() {
     # La purge de kubecolor retire aussi son dépôt (kubecolor.sources appartient au paquet)
-    apt_purge_installed kubectl kubectx helm kubecolor || true
+    apt_purge_owned kubectl kubectx helm kubecolor || true
 
-    # Dépôts et clés ajoutés par _k8s_tools_install
-    sudo rm -f \
-        /etc/apt/sources.list.d/kubernetes.list \
-        /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
-        /etc/apt/sources.list.d/helm-stable-debian.list \
-        /usr/share/keyrings/helm.gpg
+    state_remove_owned_files \
+        "$BB_K8S_KUBERNETES_APT_SOURCE_FILE" "$BB_K8S_KUBERNETES_APT_KEY_FILE" \
+        "$BB_K8S_HELM_APT_SOURCE_FILE" "$BB_K8S_HELM_APT_KEY_FILE"
 }
 
 # --------------------
@@ -264,18 +275,20 @@ _k8s_namespace_install() {
     # Créer le namespace et switch dedans afin d'éviter les conflits et petit accident (coucou la PRD :D)
     if ! _k8s_namespace_verify; then
         run_cmd kutils_kubectl_wrapper create namespace "$BB_K8S_NAMESPACE"
+        state_mark_owned "k8s-namespace:$BB_K8S_NAMESPACE"
     fi
 
     run_cmd kutils_verify_kube_context
 }
 
 _k8s_namespace_uninstall() {
-    if _k8s_namespace_verify; then
+    if state_is_owned "k8s-namespace:$BB_K8S_NAMESPACE" && _k8s_namespace_verify; then
         # --wait=false : kubectl attend sinon (sans limite) la finalisation de tout le contenu du namespace,
-        # y compris l'arrêt des pods des releases tout juste désinstallées. C'est inutile ici : le cluster
-        # entier (données et stockage local-path compris) est détruit juste après par k3s-uninstall.sh.
+        # y compris l'arrêt des pods des releases tout juste désinstallées. Inutile : si k3s appartient à la
+        # Bigbox, il est détruit juste après par k3s-uninstall.sh ; sinon le cluster finit la suppression seul.
         run_cmd kutils_kubectl_wrapper delete namespace "$BB_K8S_NAMESPACE" --wait=false
     fi
+    state_unmark "k8s-namespace:$BB_K8S_NAMESPACE"
 }
 
 # --------------------

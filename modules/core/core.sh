@@ -26,7 +26,7 @@ core_install() {
 
     _core_bigbox_configuration_install
 
-    apt_wrapper install "${BB_CORE_PACKAGES[@]}"
+    apt_install "${BB_CORE_PACKAGES[@]}"
 
     _core_go_configuration_install
 }

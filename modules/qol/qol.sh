@@ -7,6 +7,7 @@ BB_QOL_DOTFILES_DIR="$BB_QOL_BASE_DIR/dotfiles"
 # Versions épinglées des outils qui ne sont pas (ou pas partout) dans les dépôts Ubuntu
 BB_QOL_LAZYGIT_VERSION="0.66.2"
 BB_QOL_ZOXIDE_VERSION="0.10.0"
+BB_QOL_LAZYGIT_BINARY="/usr/local/bin/lazygit"
 
 BB_QOL_PACKAGES=(
     bat
@@ -19,11 +20,14 @@ BB_QOL_PACKAGES=(
 
 qol_install() {
 
-    apt_wrapper install "${BB_QOL_PACKAGES[@]}"
+    apt_install "${BB_QOL_PACKAGES[@]}"
 
-    # Générer le fichier de configuration de bat
-    if command -v batcat >/dev/null 2>&1 && [[ ! -f "$(batcat --config-file)" ]]; then
+    # Générer le fichier de configuration de bat, s'il n'existe pas
+    local bat_config_file
+    bat_config_file=$(batcat --config-file)
+    if [[ ! -f "$bat_config_file" ]]; then
         run_cmd batcat --generate-config-file
+        state_mark_owned "file:$bat_config_file"
     fi
 
     _qol_lazygit_install
@@ -46,7 +50,18 @@ qol_uninstall() {
     _qol_zoxide_uninstall
     _qol_lazygit_uninstall
 
-    apt_purge_installed "${BB_QOL_PACKAGES[@]}" || true
+    # Configuration de bat, uniquement si elle a été générée par la Bigbox
+    if command -v batcat >/dev/null 2>&1; then
+        local bat_config_file
+        bat_config_file=$(batcat --config-file)
+        if state_is_owned "file:$bat_config_file"; then
+            rm -f "$bat_config_file"
+            state_unmark "file:$bat_config_file"
+        fi
+    fi
+
+    # Seuls les paquets installés par la Bigbox sont purgés (htop est présent par défaut sur Ubuntu Desktop)
+    apt_purge_owned "${BB_QOL_PACKAGES[@]}" || true
 
 }
 
@@ -60,7 +75,7 @@ _qol_lazygit_install() {
     actual_version=$(( ${VERSION_ID/./} ))
 
     if [[ $actual_version -ge 2510 ]]; then
-        apt_wrapper install lazygit
+        apt_install lazygit
         return 0
     fi
 
@@ -80,15 +95,16 @@ _qol_lazygit_install() {
         "https://github.com/jesseduffield/lazygit/releases/download/v${BB_QOL_LAZYGIT_VERSION}/lazygit_${BB_QOL_LAZYGIT_VERSION}_linux_${arch}.tar.gz"
     tar -xzf "$tmp/lazygit.tar.gz" -C "$tmp" lazygit
 
-    sudo install "$tmp/lazygit" -D -t "/usr/local/bin"
+    sudo install "$tmp/lazygit" -D -t "$(dirname "$BB_QOL_LAZYGIT_BINARY")"
+    state_mark_owned "file:$BB_QOL_LAZYGIT_BINARY"
 
     rm -rf "${tmp:?}"
 }
 
 _qol_lazygit_uninstall() {
-    # On supprime en silence les deux possibilités
-    sudo rm -f "/usr/local/bin/lazygit"
-    apt_purge_installed lazygit || true
+    # Binaire GitHub ou paquet apt, selon la version d'Ubuntu, uniquement s'ils viennent de la Bigbox
+    state_remove_owned_files "$BB_QOL_LAZYGIT_BINARY"
+    apt_purge_owned lazygit || true
 }
 
 # Zoxide est installé depuis le .deb de sa release GitHub, en version épinglée, plutôt que via curl | sh
@@ -102,14 +118,12 @@ _qol_zoxide_install() {
 
     run_cmd curl "${BB_CURL_OPTS[@]}" -o "$tmp/zoxide.deb" \
         "https://github.com/ajeetdsouza/zoxide/releases/download/v${BB_QOL_ZOXIDE_VERSION}/zoxide_${BB_QOL_ZOXIDE_VERSION}-1_$(dpkg --print-architecture).deb"
-    apt_wrapper install "$tmp/zoxide.deb"
+    apt_install "$tmp/zoxide.deb"
 
     rm -rf "${tmp:?}"
 }
 
 _qol_zoxide_uninstall() {
-    apt_purge_installed zoxide || true
-    # Anciennes installations via le script officiel, dans le scope utilisateur
-    rm -f "${HOME:?}/.local/bin/zoxide"
-    rm -rf "${HOME:?}/.local/share/zoxide"
+    # La base de zoxide (~/.local/share/zoxide, l'historique des répertoires) appartient à l'utilisateur
+    apt_purge_owned zoxide || true
 }

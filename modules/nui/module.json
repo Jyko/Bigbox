@@ -3,5 +3,6 @@
     "description": "Gestion de l'instance NUI (web client NATS)",
     "priority": 500,
     "entrypoint": "nui.sh",
+    "dependencies": ["k8s", "nats"],
     "actions": ["install", "uninstall", "start", "stop", "upgrade"]
 }
