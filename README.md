@@ -47,6 +47,15 @@ Si l'on souhaite, nous ajoutons la Bigbox au PATH afin de l'appeler en tant que 
 export PATH=$PATH:{chemin_vers_la}/bigbox
 ```
 
+## Sécurité
+
+La Bigbox est pensée pour un poste de développement. Quelques points à connaître :
+
+- **Services exposés sur le réseau** : les services du cluster (PostgreSQL, NATS, SFTP, Wiremock, Hoppscotch, NUI) sont publiés en `NodePort`, donc sur **toutes les interfaces réseau** de la machine, avec des identifiants par défaut (`bigbox`/`bigbox` pour PostgreSQL). Sur une installation standalone connectée à un réseau partagé, ils sont joignables par les autres machines de ce réseau. Restreignez l'accès avec un pare-feu si nécessaire.
+- **Groupe `docker`** : l'utilisateur est ajouté au groupe `docker`, ce qui revient à lui donner un accès équivalent à root sur la machine.
+- **Désinstallation de Docker** : `./bigbox uninstall` supprime `/var/lib/docker` et `/var/lib/containerd`, donc **toutes** les images, conteneurs et volumes Docker de la machine, y compris ceux qui ne viennent pas de la Bigbox.
+- **Versions épinglées** : les outils téléchargés hors des dépôts apt (k3s, kubecolor, lazygit, zoxide, nats-cli) et les images des services ont une version fixée dans leur module. Les mettre à jour se fait en modifiant ces constantes.
+
 ## Cheatsheet
 
 ### Raccourcis
@@ -255,3 +264,26 @@ Les scripts situés dans le répertoire `./core` servent de librairies d'outils 
 Les répertoires situés sous `./modules` sont les hôtes des différents modules indépendants. Chaque répertoire peut contenir un module et un seul. Un module se matérialise par un fichier `*.sh` portant son nom et implémentant les fonctions principales de la Bigbox. L'organisation interne du dossier est libre, si le module nécessite des ressources, nous pouvons les déposer en respectant une hiérarchie qui nous est propre.
 
 Les fichiers situés dans le répertoire `./resources` sont les ressources spécifiques à la Bigbox et son core. Aucune ressource des modules ne doit se trouver dans ce répertoire.
+
+## Développer sur la Bigbox
+
+La Bigbox modifie réellement la machine sur laquelle elle tourne (`.bashrc`, `~/.config`, apt, systemd ...). Pour la tester sans toucher à son poste, le script `tools/sandbox/sandbox.sh` crée une VM Ubuntu jetable avec QEMU/KVM.
+
+Pré-requis sur le poste : `qemu-system-x86_64`, `qemu-img`, un accès à `/dev/kvm`, `ssh`, `rsync`, `python3`, `curl`.
+
+```sh
+tools/sandbox/sandbox.sh create          # VM Ubuntu 24.04 (ou : create 26.04), snapshot "pristine"
+tools/sandbox/sandbox.sh run install     # synchronise le dépôt puis lance ./bigbox install dans la VM
+tools/sandbox/sandbox.sh run stop -m pg  # n'importe quels arguments de la Bigbox
+tools/sandbox/sandbox.sh ssh             # shell dans la VM
+tools/sandbox/sandbox.sh reset           # retour à une Ubuntu vierge
+tools/sandbox/sandbox.sh destroy         # suppression de la VM
+```
+
+Seul le port SSH de la VM est redirigé vers l'hôte (`127.0.0.1:2222`) : les services de la Bigbox ne sont joignables que depuis la VM.
+
+Le code est vérifié avec `shellcheck` :
+
+```sh
+shellcheck -x bigbox core/*.sh modules/*/*.sh modules/*/dotfiles/*.sh tools/sandbox/*.sh
+```

@@ -15,6 +15,12 @@ BB_K8S_USER_NAME=bigbox
 BB_K8S_CLUSTER_NAME=bigbox
 
 BB_K8S_K3S_UNINSTALL_SCRIPT="/usr/local/bin/k3s-uninstall.sh"
+BB_K8S_K3S_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+
+# Versions épinglées (kubectl doit rester à une version mineure près de celle de k3s)
+BB_K8S_K3S_VERSION="v1.37.2+k3s1"
+BB_K8S_KUBECTL_MINOR_VERSION="v1.37"
+BB_K8S_KUBECOLOR_VERSION="0.8.0"
 
 k8s_install() {
 
@@ -48,7 +54,15 @@ _k8s_k3s_install() {
         return 0
     fi
 
-    run_cmd bash -c "curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE=644 sh -"
+    # Le script est téléchargé puis exécuté, sans pipe vers sh : un téléchargement interrompu
+    # ne peut pas exécuter un script tronqué. La version de k3s est épinglée, le script vérifie
+    # lui-même la somme SHA256 du binaire.
+    # K3S_KUBECONFIG_MODE=600 : le kubeconfig admin du cluster n'est lisible que par root.
+    local tmp
+    tmp=$(mktemp -d)
+    run_cmd curl -fsSL -o "$tmp/k3s-install.sh" https://get.k3s.io
+    run_cmd env INSTALL_K3S_VERSION="$BB_K8S_K3S_VERSION" K3S_KUBECONFIG_MODE=600 sh "$tmp/k3s-install.sh"
+    rm -rf "${tmp:?}"
 
 }
 
@@ -79,10 +93,10 @@ _k8s_tools_install() {
 
     # Ajouter le répo officiel Kubernetes
     sudo mkdir -p -m 755 /etc/apt/keyrings
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    curl -fsSL "https://pkgs.k8s.io/core:/stable:/$BB_K8S_KUBECTL_MINOR_VERSION/deb/Release.key" | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null <<< \
-    'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /'
+    fs_file_replace /etc/apt/sources.list.d/kubernetes.list <<< \
+    "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/$BB_K8S_KUBECTL_MINOR_VERSION/deb/ /"
     sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
 
     # Ajouter le répo officiel de Helm
@@ -96,10 +110,15 @@ _k8s_tools_install() {
     # Kubectl, Kubectx et Helm
     apt_wrapper install kubectl kubectx helm
 
-    # Kubecolor
-    run_cmd wget -O /tmp/kubecolor.deb "https://kubecolor.github.io/packages/deb/pool/main/k/kubecolor/kubecolor_$(wget -q -O- https://kubecolor.github.io/packages/deb/version)_$(dpkg --print-architecture).deb"
-    apt_wrapper install /tmp/kubecolor.deb
-    rm -f /tmp/kubecolor.deb
+    # Kubecolor : version épinglée, téléchargée dans un répertoire temporaire privé
+    # (et non dans /tmp/kubecolor.deb, un chemin prévisible exposé aux attaques par lien symbolique)
+    local tmp arch
+    arch=$(dpkg --print-architecture)
+    tmp=$(mktemp -d)
+    run_cmd curl -fsSL -o "$tmp/kubecolor.deb" \
+        "https://github.com/kubecolor/kubecolor/releases/download/v$BB_K8S_KUBECOLOR_VERSION/kubecolor_${BB_K8S_KUBECOLOR_VERSION}_linux_${arch}.deb"
+    apt_wrapper install "$tmp/kubecolor.deb"
+    rm -rf "${tmp:?}"
 }
 
 _k8s_tools_uninstall() {
@@ -118,8 +137,9 @@ _k8s_generate_unified_configuration() {
     fi
 
     # Petit backup des familles avant toute chose
-    if [ -f "$BB_K8S_STANDARD_FILE" ]; then
+    if [[ -f "$BB_K8S_STANDARD_FILE" ]]; then
         cp -L "$BB_K8S_STANDARD_FILE" "$BB_K8S_BACKUP_FILE"
+        chmod 600 "$BB_K8S_BACKUP_FILE"
         rm -f "$BB_K8S_STANDARD_FILE"
     fi
 
@@ -127,7 +147,8 @@ _k8s_generate_unified_configuration() {
     # On appelle kubectl nature, sans wrapper.
     # En cas de contexte identique, le dernier chargé prend la précédence, d'où l'ordre de passage en argument des fichiers dans KUBECONFIG.
     # Kubectl considère un chemin de fichier null comme un fichier vide
-    KUBECONFIG="$BB_K8S_BACKUP_FILE:$BB_K8S_BIGBOX_FILE" kubectl config view --merge --flatten > "$BB_K8S_UNIFIED_FILE"
+    # umask 077 : la configuration unifiée contient les identifiants de tous les clusters de l'utilisateur
+    (umask 077 && KUBECONFIG="$BB_K8S_BACKUP_FILE:$BB_K8S_BIGBOX_FILE" kubectl config view --merge --flatten > "$BB_K8S_UNIFIED_FILE")
 
     # Symlink sur config.yaml, comme çà c'est propre et portable 👍
     ln -sf "$BB_K8S_UNIFIED_FILE" "$BB_K8S_STANDARD_FILE"
@@ -141,21 +162,27 @@ _k8s_configuration_install() {
 
     # Créer le répertoire de configuration K8S ($HOME/.kube) et rendre $USER propriétaire
     mkdir -p "$BB_K8S_CONFIG_DIR"
+    chmod 700 "$BB_K8S_CONFIG_DIR"
     sudo chown -f -R "$USER" "$BB_K8S_CONFIG_DIR"
 
-    # Copier le fichier de config de base k3s vers le dossier de conf $HOME/.kube
-    sudo cp "/etc/rancher/k3s/k3s.yaml" "$BB_K8S_BIGBOX_FILE"
-    sudo chown "$USER":"$USER" "$BB_K8S_BIGBOX_FILE"
-    
-    # Renommer le contexte, le user et le cluster k3s par défault pour éviter les conflits et effet de bord
-    # TODO: C'est pas le plus solide ou le plus joli, mais çà fait le taff'.
-    # Si les noms des clusters, users et contexts sont différents entre eux, il faut changer la méthode de modification et passer par JQ ou équivalent.
-    sed -i "s/\bdefault\b/$BB_K8S_CONTEXT_NAME/g" "$BB_K8S_BIGBOX_FILE"
+    # Copier le fichier de config de base k3s vers le dossier de conf $HOME/.kube, lisible uniquement par $USER
+    sudo install -m 600 -o "$USER" -g "$(id -gn)" "$BB_K8S_K3S_KUBECONFIG" "$BB_K8S_BIGBOX_FILE"
+
+    # Renommer le contexte, le user et le cluster k3s par défaut ("default") pour éviter les conflits et effets de bord.
+    # yq cible uniquement les champs concernés, contrairement à un sed qui remplacerait tous les mots "default" du fichier.
+    BB_CLUSTER="$BB_K8S_CLUSTER_NAME" BB_USER="$BB_K8S_USER_NAME" BB_CONTEXT="$BB_K8S_CONTEXT_NAME" yq -i '
+        (.clusters[] | select(.name == "default") | .name) = strenv(BB_CLUSTER) |
+        (.users[] | select(.name == "default") | .name) = strenv(BB_USER) |
+        (.contexts[] | select(.name == "default") | .context.cluster) = strenv(BB_CLUSTER) |
+        (.contexts[] | select(.name == "default") | .context.user) = strenv(BB_USER) |
+        (.contexts[] | select(.name == "default") | .name) = strenv(BB_CONTEXT) |
+        .["current-context"] = strenv(BB_CONTEXT)
+    ' "$BB_K8S_BIGBOX_FILE"
 
     # Maintenant que le fichier de configuration bigbox est prêt et idempotent, nous générons une nouvelle configuration unifiée
     _k8s_generate_unified_configuration
 
-    kubectx $BB_K8S_CONTEXT
+    kubectx "$BB_K8S_CONTEXT"
 }
 
 # Désinstaller la configuration bigbox mais conserver les autres
@@ -169,7 +196,7 @@ _k8s_configuration_uninstall() {
     fi
 
     # Supprimer le fichier de configuration Bigbox
-    sudo rm -f "$BB_K8S_BIGBOX_FILE"
+    rm -f "$BB_K8S_BIGBOX_FILE"
 
     # Maintenant que la configuration actuelle et les fichiers la reflétant ne contiennent plus de trace de la Bigbox, nous recréons une configuration unifiée propre.
     _k8s_generate_unified_configuration

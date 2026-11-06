@@ -6,6 +6,7 @@ BB_NATS_MODULE_HELM_DIR="$BB_NATS_MODULE_BASE_DIR/helm"
 BB_NATS_HELM_CHART_NAME=bigbox-nats
 BB_NATS_HELM_RELEASE_NAME=bigbox-nats
 BB_NATS_DOTFILES_DIR="$BB_NATS_MODULE_BASE_DIR/dotfiles"
+BB_NATS_CLI_VERSION="v0.5.1"
 
 nats_install() {
 
@@ -13,7 +14,7 @@ nats_install() {
     run_cmd kutils_release_upgrade "$BB_NATS_HELM_RELEASE_NAME" "$BB_NATS_MODULE_HELM_DIR"
 
     # Installer la NATS-CLI
-    run_cmd go install github.com/nats-io/natscli/nats@latest
+    run_cmd go install "github.com/nats-io/natscli/nats@$BB_NATS_CLI_VERSION"
 
     # Préparer un NATS-CLI contexte pour une connexion depuis le Host
     # TODO : Avec l'utilisation de varenv, on généra le Values.yaml pour que ce soit solide.
@@ -26,7 +27,7 @@ nats_uninstall() {
 
     # Supprimer les contextes de NATS-CLI
     # FIXME : C'est barbare, mais elle ne nous autorise pas à supprimer le dernier. Faut trouver un workaround
-    rm -rf "$HOME/.config/nats"
+    rm -rf "${HOME:?}/.config/nats"
     # Supprimer le binaire de NATS-CLI
     rm -f "$HOME/go/bin/nats"
 

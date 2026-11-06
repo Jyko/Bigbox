@@ -14,7 +14,7 @@ replicaCount: 1
 
 image:
   repository: "hoppscotch/hoppscotch"
-  tag: "latest"
+  tag: "2026.10.1"
   pullPolicy: IfNotPresent
 
 service:

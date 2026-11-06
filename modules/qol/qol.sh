@@ -4,6 +4,10 @@
 BB_QOL_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_QOL_DOTFILES_DIR="$BB_QOL_BASE_DIR/dotfiles"
 
+# Versions épinglées des outils qui ne sont pas (ou pas partout) dans les dépôts Ubuntu
+BB_QOL_LAZYGIT_VERSION="0.66.2"
+BB_QOL_ZOXIDE_VERSION="0.10.0"
+
 BB_QOL_PACKAGES=(
     bat
     eza
@@ -57,18 +61,28 @@ _qol_lazygit_install() {
 
     if [[ $actual_version -ge 2510 ]]; then
         apt_wrapper install lazygit
-    else
-        lazygit_latest_version=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | \grep -Po '"tag_name": *"v\K[^"]*')
-
-        local tmp="$(mktemp -d)"
-
-        curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/v${lazygit_latest_version}/lazygit_${lazygit_latest_version}_Linux_x86_64.tar.gz" | \
-            tar -xz -C "$tmp"
-
-        sudo install "$tmp/lazygit" -D -t "/usr/local/bin"
-
-        rm -rf "$tmp"
+        return 0
     fi
+
+    if command -v lazygit >/dev/null 2>&1; then
+        return 0
+    fi
+
+    # Les archives de lazygit nomment l'architecture x86_64 et non amd64 comme dpkg
+    local arch
+    arch=$(dpkg --print-architecture)
+    [[ "$arch" == "amd64" ]] && arch="x86_64"
+
+    local tmp
+    tmp=$(mktemp -d)
+
+    run_cmd curl -fsSL -o "$tmp/lazygit.tar.gz" \
+        "https://github.com/jesseduffield/lazygit/releases/download/v${BB_QOL_LAZYGIT_VERSION}/lazygit_${BB_QOL_LAZYGIT_VERSION}_linux_${arch}.tar.gz"
+    tar -xzf "$tmp/lazygit.tar.gz" -C "$tmp" lazygit
+
+    sudo install "$tmp/lazygit" -D -t "/usr/local/bin"
+
+    rm -rf "${tmp:?}"
 }
 
 _qol_lazygit_uninstall() {
@@ -77,13 +91,25 @@ _qol_lazygit_uninstall() {
     apt_wrapper purge lazygit || true
 }
 
+# Zoxide est installé depuis le .deb de sa release GitHub, en version épinglée, plutôt que via curl | sh
 _qol_zoxide_install() {
-    if ! command -v zoxide >/dev/null 2>&1; then
-        curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+    if command -v zoxide >/dev/null 2>&1; then
+        return 0
     fi
+
+    local tmp
+    tmp=$(mktemp -d)
+
+    run_cmd curl -fsSL -o "$tmp/zoxide.deb" \
+        "https://github.com/ajeetdsouza/zoxide/releases/download/v${BB_QOL_ZOXIDE_VERSION}/zoxide_${BB_QOL_ZOXIDE_VERSION}-1_$(dpkg --print-architecture).deb"
+    apt_wrapper install "$tmp/zoxide.deb"
+
+    rm -rf "${tmp:?}"
 }
 
 _qol_zoxide_uninstall() {
-    rm -f "$HOME/.local/bin/zoxide"
-    rm -rf "$HOME/.local/share/zoxide"
+    apt_wrapper purge zoxide || true
+    # Anciennes installations via le script officiel, dans le scope utilisateur
+    rm -f "${HOME:?}/.local/bin/zoxide"
+    rm -rf "${HOME:?}/.local/share/zoxide"
 }

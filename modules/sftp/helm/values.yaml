@@ -6,8 +6,13 @@ replicaCount: 1
 
 image:
   repository: atmoz/sftp
-  tag: latest
+  # atmoz/sftp ne publie pas de tags versionnés : épinglage par digest
+  tag: "latest@sha256:0960390462a4441dbb63698d7c185b76a41ffcee7b78ff4adf275f3e66f9c475"
   pullPolicy: IfNotPresent
+
+initImage:
+  repository: alpine
+  tag: "3.24"
 
 service:
   type: NodePort

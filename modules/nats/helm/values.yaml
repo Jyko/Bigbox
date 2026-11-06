@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: nats
-  tag: latest
+  tag: "2.15.2"
   pullPolicy: IfNotPresent
 
 service:

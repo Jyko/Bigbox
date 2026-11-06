@@ -17,7 +17,7 @@ spec:
     spec:
       initContainers:
         - name: sftp-init
-          image: alpine
+          image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
           command: ["sh", "-c", "chown -R 1001:1001 /home/{{ .Values.sftp.user }}"]
           volumeMounts:
             - name: sftp-data

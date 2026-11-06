@@ -24,6 +24,13 @@ BB_K8S_NAMESPACE=bigbox
 # Délai maximum d'attente de l'API Kubernetes, en secondes
 BB_K8S_KUBECTL_TIMEOUT=60
 
+# PostgreSQL de la Bigbox, vu depuis l'Host (doit rester cohérent avec modules/pg/helm/values.yaml)
+BB_PG_HOST=localhost
+BB_PG_PORT=30001
+BB_PG_USER=bigbox
+BB_PG_PASSWORD=bigbox
+BB_PG_DATABASE=bigbox
+
 # SSH
 BB_SSH_DIR=$HOME/.ssh/bigbox
 

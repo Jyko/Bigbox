@@ -19,7 +19,7 @@ spec:
         - ip: {{ required "L'IP de l'Host est obligatoire : --set hostIp=# 🚨" .Values.hostIp | quote }}
           hostnames:
             - {{ .Values.hostAlias | quote }}
-      # Initialiser la base de donnée avec Prisma. Ces FDPs de devs de merde n'ont pas automatisé çà dans leur image Docker de chien de la casse.
+      # Initialiser la base de données avec Prisma : l'image Docker de Hoppscotch ne joue pas les migrations elle-même.
       initContainers:
         - name: prisma-migrate
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -32,9 +32,15 @@ spec:
             - pnpm exec prisma migrate deploy
           env:
             - name: DATABASE_URL
-              value: "postgresql://{{ .Values.postgresql.username }}:{{ .Values.postgresql.password }}@{{ .Values.postgresql.hostname }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bigbox-hoppscotch.fullname" . }}-secret
+                  key: databaseUrl
             - name: DATA_ENCRYPTION_KEY
-              value: {{ required "La clé d'encryption de la database Hoppscotch est obligatoire : --set database.dataEncryptionKey=# 🚨" .Values.database.dataEncryptionKey | quote  }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bigbox-hoppscotch.fullname" . }}-secret
+                  key: dataEncryptionKey
             - name: WHITELISTED_ORIGINS
               value: "http://localhost:3170,http://localhost:3000,http://localhost:3100,app://localhost_3200,app://hoppscotch"
             - name: VITE_BASE_URL
@@ -67,9 +73,15 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
             - name: DATABASE_URL
-              value: "postgresql://{{ .Values.postgresql.username }}:{{ .Values.postgresql.password }}@{{ .Values.postgresql.hostname }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bigbox-hoppscotch.fullname" . }}-secret
+                  key: databaseUrl
             - name: DATA_ENCRYPTION_KEY
-              value: {{ required "La clé d'encryption de la database Hoppscotch est obligatoire : --set database.dataEncryptionKey=# 🚨" .Values.database.dataEncryptionKey | quote  }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bigbox-hoppscotch.fullname" . }}-secret
+                  key: dataEncryptionKey
             - name: WHITELISTED_ORIGINS
               value: "http://localhost:30040,http://localhost:30041,http://localhost:30042,app://localhost_3200,app://hoppscotch"
             - name: VITE_BASE_URL

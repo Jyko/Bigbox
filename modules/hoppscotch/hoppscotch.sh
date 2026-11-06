@@ -25,7 +25,7 @@ hoppscotch_install() {
     fi
 
     run_cmd kutils_release_upgrade "$BB_HOPPSCOTCH_HELM_RELEASE_NAME" "$BB_HOPPSCOTCH_MODULE_HELM_DIR" \
-        --set database.dataEncryptionKey="$(<"$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE")" \
+        --set-file database.dataEncryptionKey="$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE" \
         --set hostIp="$host_ip"
 }
 
@@ -56,7 +56,7 @@ hoppscotch_upgrade() {
     run_cmd kutils_release_upgrade \
         "$BB_HOPPSCOTCH_HELM_RELEASE_NAME" \
         "$BB_HOPPSCOTCH_MODULE_HELM_DIR" \
-        --set database.dataEncryptionKey="$(<"$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE")" \
+        --set-file database.dataEncryptionKey="$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE" \
         --set hostIp="$host_ip" \
         
 }
@@ -77,7 +77,7 @@ hoppscotch_start() {
     run_cmd kutils_release_upgrade \
         "$BB_HOPPSCOTCH_HELM_RELEASE_NAME" \
         "$BB_HOPPSCOTCH_MODULE_HELM_DIR" \
-        --set database.dataEncryptionKey="$(<"$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE")" \
+        --set-file database.dataEncryptionKey="$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE" \
         --set hostIp="$host_ip"
 }
 
@@ -101,7 +101,8 @@ _hoppscotch_create_encryption_key() {
         log_debug "Le fichier $BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE n'existe pas.\n"
         log_debug "Génération de la clé d'encryption\n"
 
-        openssl rand -hex 16 > "$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE"
+        # umask 077 : la clé n'est lisible que par l'utilisateur
+        (umask 077 && openssl rand -hex 16 > "$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE")
 
         log_debug "La clé a été générée et écrite dans le fichier $BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE\n"
     else
@@ -111,7 +112,7 @@ _hoppscotch_create_encryption_key() {
 
 _hoppscotch_delete_encryption_key() {
     log_debug "Suppression du fichier $BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE contenant la clé d'encryption des données\n"
-    rm -rf "$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE"
+    rm -f "$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE"
 }
 
 # --------------------
@@ -124,18 +125,18 @@ _hoppscotch_delete_encryption_key() {
 _hoppscotch_create_database() {
     # Créer la database hoppscotch seulement si elle n'existe pas.    
     _hoppscotch_wait_postgresql_available
-    PGPASSWORD="bigbox" psql -U bigbox -h localhost -p 30001 -d bigbox -c "CREATE DATABASE hoppscotch;" >/dev/null 2>&1 || true
+    PGPASSWORD="$BB_PG_PASSWORD" psql -U "$BB_PG_USER" -h "$BB_PG_HOST" -p "$BB_PG_PORT" -d "$BB_PG_DATABASE" -c "CREATE DATABASE hoppscotch;" >/dev/null 2>&1 || true
 }
 
 _hoppscotch_drop_database() {
     _hoppscotch_wait_postgresql_available
-    PGPASSWORD="bigbox" psql -U bigbox -h localhost -p 30001 -d bigbox -c "DROP DATABASE IF EXISTS hoppscotch;" >/dev/null 2>&1
+    PGPASSWORD="$BB_PG_PASSWORD" psql -U "$BB_PG_USER" -h "$BB_PG_HOST" -p "$BB_PG_PORT" -d "$BB_PG_DATABASE" -c "DROP DATABASE IF EXISTS hoppscotch;" >/dev/null 2>&1
 }
 
 _hoppscotch_wait_postgresql_available() {
     local seconds_passed=0
 
-    while ! PGPASSWORD="bigbox" pg_isready -U bigbox -h localhost -p 30001 > /dev/null 2>&1; do
+    while ! PGPASSWORD="$BB_PG_PASSWORD" pg_isready -U "$BB_PG_USER" -h "$BB_PG_HOST" -p "$BB_PG_PORT" > /dev/null 2>&1; do
         sleep $BB_HOPPSCOTCH_RETRY_DELAY
         (( seconds_passed += BB_HOPPSCOTCH_RETRY_DELAY ))
         if [[ $seconds_passed -ge $BB_HOPPSCOTCH_PG_TIMEOUT ]]; then

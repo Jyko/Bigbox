@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/nats-nui/nui
-  tag: latest
+  tag: "0.10.0"
   pullPolicy: IfNotPresent
 
 service:

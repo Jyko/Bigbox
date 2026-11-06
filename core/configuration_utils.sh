@@ -22,7 +22,7 @@ cfg_get_line() {
     fi
 
      # Récupérer toutes les lignes correspondantes
-    mapfile -t lines < <(grep -E "$pattern" "$file")
+    mapfile -t lines < <(grep -E -- "$pattern" "$file")
     local count=${#lines[@]}
     if (( count == 0 )); then
         log_debug "Aucune ligne d'instruction pour le pattern \"$pattern\" dans le fichier $file \n"
@@ -60,9 +60,16 @@ cfg_set_line() {
         log_error "Le chemin de fichier fourni $file n'est pas valide \n" && return 2 ;
     fi
 
-    # Suppression de la ligne actuelle
+    # Suppression de la ligne actuelle.
+    # grep -Ev plutôt que sed : le pattern n'est pas interprété comme une commande sed (un "|" le cassait),
+    # et la sémantique est la même que celle de cfg_get_line (grep -E).
+    # Le contenu est réécrit dans le fichier existant (cat >) pour conserver son inode et ses droits.
     log_debug "Suppression de la ligne d'instruction matchant le pattern \"$pattern\" dans le fichier $file\n"
-    sed -i -E "\|$pattern|d" "$file"
+    local tmp
+    tmp=$(mktemp)
+    grep -Ev -- "$pattern" "$file" > "$tmp" || true
+    cat "$tmp" > "$file"
+    rm -f "$tmp"
 
     # Nous n'écrivons une nouvelle instruction que si la nouvelle ligne n'est pas blanche/nulle
     if [[ -n "$line" ]]; then

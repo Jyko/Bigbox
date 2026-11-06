@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: "holomekc/wiremock-gui"
-  tag: "latest-alpine"
+  tag: "3.13.217-alpine"
   pullPolicy: IfNotPresent
 
 service:
