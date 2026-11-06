@@ -102,7 +102,13 @@ _hoppscotch_create_database() {
 }
 
 _hoppscotch_drop_database() {
-    _hoppscotch_wait_postgresql_available
+    # Pas d'attente à la désinstallation : si PostgreSQL ne répond pas immédiatement, la base n'existe pas
+    # (installation partielle) ou disparaîtra avec la release pg et son volume.
+    if ! PGPASSWORD="$BB_PG_PASSWORD" pg_isready -t 2 -U "$BB_PG_USER" -h "$BB_PG_HOST" -p "$BB_PG_PORT" >/dev/null 2>&1; then
+        log_debug "PostgreSQL injoignable, pas de suppression de la base hoppscotch\n"
+        return 0
+    fi
+
     PGPASSWORD="$BB_PG_PASSWORD" psql -U "$BB_PG_USER" -h "$BB_PG_HOST" -p "$BB_PG_PORT" -d "$BB_PG_DATABASE" -c "DROP DATABASE IF EXISTS hoppscotch;" >/dev/null 2>&1
 }
 
