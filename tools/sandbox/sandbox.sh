@@ -178,7 +178,7 @@ EOF
 users:
   - name: $BB_SANDBOX_USER
     shell: /bin/bash
-    groups: [sudo]
+    # Pas de groupe sudo : sa règle "%sudo ALL=(ALL:ALL) ALL" ferait demander un mot de passe à "sudo -v"
     sudo: "ALL=(ALL) NOPASSWD:ALL"
     lock_passwd: true
     ssh_authorized_keys:
