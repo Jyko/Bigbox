@@ -8,7 +8,7 @@
 # Keybinds de FZF
 # --------------------
 # Raccourcis standard de fzf
-if [ -f /usr/share/doc/fzf/examples/key-bindings.bash ]; then
+if [[ -f /usr/share/doc/fzf/examples/key-bindings.bash ]]; then
   source /usr/share/doc/fzf/examples/key-bindings.bash
 fi
 
@@ -16,6 +16,8 @@ fi
 # Function des raccourcis
 # --------------------
 
+# Le script de preview est volontairement entre quotes simples : il est évalué par fzf, pas par bash
+# shellcheck disable=SC2016
 find_content_in_directory() {
   rg \
       --color=always \

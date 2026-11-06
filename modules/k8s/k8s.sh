@@ -68,9 +68,8 @@ _k8s_k3s_install() {
 
 _k8s_k3s_uninstall() {
 
-    # Désinstaller k3s via son script, me demandez pas ce que çà fait, j'en sais rien :DDD
+    # Désinstaller k3s via le script fourni par son installeur (binaires, services, données du cluster)
     if _k8s_k3s_verify; then
-        # Nous dégageons des services inutiles pour nous (LB et DNS)
         run_cmd sudo "$BB_K8S_K3S_UNINSTALL_SCRIPT"
     fi
 }
@@ -209,7 +208,6 @@ _k8s_configuration_uninstall() {
 # --------------------
 _k8s_namespace_verify() {
     kutils_kubectl_wrapper get namespace "$BB_K8S_NAMESPACE" >/dev/null 2>&1
-    return $?
 }
 
 _k8s_namespace_install() {
@@ -255,7 +253,7 @@ _k8s_dotfiles_uninstall() {
 }
 
 
-# A refléchir, çà à l'air tricky
+# À réfléchir, ça a l'air tricky
 # k8s_upgrade() { return 0 ; }
 
 k8s_start() {
@@ -264,8 +262,8 @@ k8s_start() {
         log_error "Le cluster Kubernetes et son API n'ont pas démarré correctement \n"
         return 2
     fi
- }
+}
 
-k8s_stop() { 
+k8s_stop() {
     run_cmd sudo systemctl stop k3s
- }
+}

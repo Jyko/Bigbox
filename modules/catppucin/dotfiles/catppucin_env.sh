@@ -5,4 +5,5 @@
 # Sauf si vous savez exactement ce que vous faites
 
 # Changer le thème de ls, eza, tree, dir, fd, fzf, ripgrep ...
-export LS_COLORS="$(vivid generate catppuccin-mocha)"
+LS_COLORS="$(vivid generate catppuccin-mocha)"
+export LS_COLORS

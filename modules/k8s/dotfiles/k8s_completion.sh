@@ -1,8 +1,13 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash
+
 # Fichier à ne pas modifier manuellement !
 # Sauf si vous savez exactement ce que vous faites
 
 # Autocomplétion pour kubectl, helm et kubectx
+# shellcheck source=/dev/null
 source <(kubectl completion bash)
+# shellcheck source=/dev/null
 source <(helm completion bash)
 # Autocomplétion pour les alias
 complete -o default -F __start_kubectl kubecolor

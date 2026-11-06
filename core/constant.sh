@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
+# Constantes globales utilisées par les autres librairies et les modules
+# shellcheck disable=SC2034
 
 # Fichier d'info
 BB_INFO_FILE="$SCRIPT_DIR/info.json"

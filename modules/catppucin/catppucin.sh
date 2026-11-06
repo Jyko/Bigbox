@@ -6,7 +6,7 @@ BB_CATPPUCIN_DOTFILES_DIR="$BB_CATPPUCIN_BASE_DIR/dotfiles"
 BB_CATPPUCIN_BAT_THEME_FILE="Catppuccin Mocha.tmTheme"
 BB_CATPPUCIN_BAT_THEME_LINE="--theme=\"Catppuccin Mocha\""
 
-# La malveillance maximum, ici on install Catppucin Moccha PARTOUT ! :sdk:
+# La malveillance maximum, ici on install Catppuccin Mocha PARTOUT ! :sdk:
 catppucin_install() {
 
     apt_wrapper install vivid

@@ -8,25 +8,10 @@ BB_HOPPSCOTCH_HELM_RELEASE_NAME=bigbox-hoppscotch
 BB_HOPPSCOTCH_PG_TIMEOUT=30
 BB_HOPPSCOTCH_RETRY_DELAY=1
 
-# TODO !
 BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE="$BB_CFG_DIR/hoppscotch/hoppscotch.key"
 
 hoppscotch_install() {
-
-    _hoppscotch_create_database
-    _hoppscotch_create_encryption_key
-
-    # On failfast en tentant de récupérer l'IP de l'Host en amont
-    local host_ip
-
-    if ! host_ip=$(get_host_ip) || [[ -z "$host_ip" ]]; then
-        log_error "L'IP de l'Host est inconnue\n"
-        return 2
-    fi
-
-    run_cmd kutils_release_upgrade "$BB_HOPPSCOTCH_HELM_RELEASE_NAME" "$BB_HOPPSCOTCH_MODULE_HELM_DIR" \
-        --set-file database.dataEncryptionKey="$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE" \
-        --set hostIp="$host_ip"
+    _hoppscotch_deploy
 }
 
 hoppscotch_uninstall() {
@@ -41,27 +26,22 @@ hoppscotch_uninstall() {
 }
 
 hoppscotch_upgrade() {
-
-    _hoppscotch_create_database
-    _hoppscotch_create_encryption_key
-
-    # On failfast en tentant de récupérer l'IP de l'Host en amont
-    local host_ip
-
-    if ! host_ip=$(get_host_ip) || [[ -z "$host_ip" ]]; then
-        log_error "L'IP de l'Host est inconnue\n"
-        return 2
-    fi
-
-    run_cmd kutils_release_upgrade \
-        "$BB_HOPPSCOTCH_HELM_RELEASE_NAME" \
-        "$BB_HOPPSCOTCH_MODULE_HELM_DIR" \
-        --set-file database.dataEncryptionKey="$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE" \
-        --set hostIp="$host_ip" \
-        
+    _hoppscotch_deploy
 }
 
 hoppscotch_start() {
+    _hoppscotch_deploy
+}
+
+hoppscotch_stop() {
+    run_cmd kutils_release_stop \
+        "$BB_HOPPSCOTCH_HELM_RELEASE_NAME" \
+        "$BB_HOPPSCOTCH_HELM_CHART_NAME" \
+        "$BB_HOPPSCOTCH_MODULE_HELM_DIR"
+}
+
+# Créer la base et la clé de chiffrement si besoin, puis installer ou mettre à jour la release
+_hoppscotch_deploy() {
 
     _hoppscotch_create_database
     _hoppscotch_create_encryption_key
@@ -79,13 +59,6 @@ hoppscotch_start() {
         "$BB_HOPPSCOTCH_MODULE_HELM_DIR" \
         --set-file database.dataEncryptionKey="$BB_HOPPSCOTCH_ENCRYPTION_KEY_FILE" \
         --set hostIp="$host_ip"
-}
-
-hoppscotch_stop() {
-    run_cmd kutils_release_stop \
-        "$BB_HOPPSCOTCH_HELM_RELEASE_NAME" \
-        "$BB_HOPPSCOTCH_HELM_CHART_NAME" \
-        "$BB_HOPPSCOTCH_MODULE_HELM_DIR"
 }
 
 # --------------------
@@ -137,10 +110,10 @@ _hoppscotch_wait_postgresql_available() {
     local seconds_passed=0
 
     while ! PGPASSWORD="$BB_PG_PASSWORD" pg_isready -U "$BB_PG_USER" -h "$BB_PG_HOST" -p "$BB_PG_PORT" > /dev/null 2>&1; do
-        sleep $BB_HOPPSCOTCH_RETRY_DELAY
+        sleep "$BB_HOPPSCOTCH_RETRY_DELAY"
         (( seconds_passed += BB_HOPPSCOTCH_RETRY_DELAY ))
         if [[ $seconds_passed -ge $BB_HOPPSCOTCH_PG_TIMEOUT ]]; then
-            log_error "Les tentatives de connexion à l'instance postgresql sont arrivées au terme du timeout de ${BB_HOPPSCOTCH_PG_TIMEOUT}s"
+            log_error "Les tentatives de connexion à l'instance postgresql sont arrivées au terme du timeout de ${BB_HOPPSCOTCH_PG_TIMEOUT}s\n"
             return 1
         fi
     done

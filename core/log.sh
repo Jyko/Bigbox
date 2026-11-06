@@ -51,7 +51,7 @@ _log_is_at_least() {
 }
 
 # Retourner 0 si le niveau de log actuel est au moins égal à [...]
-# Fonctions convénientes pour masquer l'implémentation interne
+# Fonctions de commodité pour masquer l'implémentation interne
 log_is_debug() { _log_is_at_least -l="$LOG_DEBUG" || return 1 ; }
 log_is_info() { _log_is_at_least -l="$LOG_INFO" || return 1 ; }
 log_is_silent() { _log_is_at_least -l="$LOG_SILENT" || return 1 ; }
@@ -61,7 +61,7 @@ log_is_silent() { _log_is_at_least -l="$LOG_SILENT" || return 1 ; }
 # --------------------
 
 # Afficher un message de log d'une certaine typologie.
-# Chaque à son niveau de déclenchement et son format propre.
+# Chaque typologie a son niveau de déclenchement et son format propre.
 # DEBUG     : Gris      uniquement en niveau DEBUG
 # INFO      : Blanc     toujours sauf en SILENT
 # SUCCESS   : Vert      toujours sauf en SILENT

@@ -93,7 +93,8 @@ kutils_wait_api_available() {
 # Mettre à jour ou installer une release Helm.
 #
 # $1 release_name   : Le nom de la release Helm à mettre à jour
-# $3 helm_dir       : Le répertoire dans lequel se trouve la Chart.yaml de la release à mettre à jour
+# $2 helm_dir       : Le répertoire dans lequel se trouve la Chart.yaml de la release à mettre à jour
+# $@                : Arguments supplémentaires passés à helm (--set ...)
 kutils_release_upgrade() {
     local release_name="$1"
     local helm_dir="$2"
@@ -141,8 +142,12 @@ kutils_release_uninstall() {
     # Récupération et suppression des PVs associés à la release
     local label_selector="app.kubernetes.io/instance=${release_name},app.kubernetes.io/name=${chart_name}"
 
-    for pv in $(kutils_kubectl_wrapper get pv -l "$label_selector" -o jsonpath='{.items[*].metadata.name}'); do
-        [[ -n "$pv" ]] && kutils_kubectl_wrapper delete pv "$pv" || true
+    local pvs pv
+    mapfile -t pvs < <(kutils_kubectl_wrapper get pv -l "$label_selector" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+
+    for pv in "${pvs[@]}"; do
+        [[ -z "$pv" ]] && continue
+        kutils_kubectl_wrapper delete pv "$pv" || true
     done
 
     return 0

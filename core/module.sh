@@ -77,8 +77,11 @@ module_run() {
     set -o errtrace
     trap '_module_on_error "$?" "$module"' ERR
 
+    local priorities
+    mapfile -t priorities < <(printf "%s\n" "${!MODULES[@]}" | sort "${sort_args[@]}")
+
     # Pour chaque module enregistré et trié, nous exécutons l'action
-    for module_priority in $(printf "%s\n" "${!MODULES[@]}" | sort "${sort_args[@]}"); do
+    for module_priority in "${priorities[@]}"; do
 
         module="${MODULES[$module_priority]}"
         func="${module}_${ACTION}"
