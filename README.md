@@ -31,6 +31,16 @@ Nous désinstallons la Bigbox :
 ./bigbox uninstall
 ```
 
+Toutes les actions acceptent une liste de modules avec `-m`. Les dépendances sont résolues automatiquement :
+
+```sh
+./bigbox install -m pg          # installe aussi system, core et k8s (k3s)
+./bigbox uninstall -m pg        # désinstalle aussi hoppscotch, qui dépend de pg ; k3s est conservé
+./bigbox uninstall -m k8s       # désinstalle k3s et tous les services qui en dépendent
+```
+
+La désinstallation ne retire que ce que la Bigbox a elle-même installé : un paquet, un Docker, un k3s, un dépôt apt ou un fichier de configuration présents avant elle sont conservés. Elle se termine par un `apt autoremove`.
+
 Nous éteignons les outils dont nous ne nous servons pas pour libérer des ressources :
 ```sh
 ./bigbox stop

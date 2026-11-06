@@ -18,7 +18,9 @@ tools/sandbox/sandbox.sh exec '<commande>'      # commande arbitraire dans ~/Big
 tools/sandbox/sandbox.sh reset                  # retour à une Ubuntu vierge
 ```
 
-Actions de la Bigbox : `install`/`uninstall` (tous les modules, pas de `-m`), `start|stop|upgrade -m mod1,mod2`, options `-d` (debug), `-s` (silencieux), `-h`, `-v`, `-b`.
+Actions de la Bigbox : `install|uninstall|start|stop|upgrade [-m mod1,mod2]`, options `-d` (debug), `-s` (silencieux), `-h`, `-v`, `-b`.
+
+Tests en sandbox : toujours bornés. 120 s maximum par install ou uninstall, avec le `timeout` lancé **dans la VM** (un timeout côté hôte ne tue que le client SSH). Contrôles bornés eux aussi, logs horodatés non bufferisés. Tester module par module avec `-m` plutôt qu'une install complète.
 
 Il n'y a pas de suite de tests. Lint, à lancer sur l'hôte (doit rester sans avertissement) :
 
@@ -35,6 +37,8 @@ helm lint modules/<nom>/helm            # dans la VM si helm n'est pas installé
 - `order` (`asc`/`desc`) : sens d'exécution selon la priorité des modules.
 - `reboot` : affiche en fin d'action un avertissement pour recharger le shell.
 - `modulable` : autorise ou non le filtrage `-m/--module`.
+- `dependencies` : sens de résolution des dépendances avec `-m`. `forward` (install, start, upgrade) ajoute les dépendances : `install -m pg` installe k8s, donc k3s. `reverse` (uninstall, stop) ajoute les modules dépendants : `uninstall -m pg` retire aussi hoppscotch.
+- `autoremove` : `apt-get autoremove --purge` en fin d'action (uninstall).
 
 `parse_args` refuse toute action absente de ce fichier.
 
@@ -43,10 +47,15 @@ helm lint modules/<nom>/helm            # dans la VM si helm n'est pas installé
   - `name`
   - `priority` : entier unique (une collision arrête `module_load` avec une erreur).
   - `entrypoint` : le fichier `.sh` du module.
+  - `dependencies` : les modules requis. Ils doivent exister et avoir une priorité inférieure, ce que `_module_index` vérifie.
   - `actions` : la liste des actions supportées.
 - Le point d'entrée n'est sourcé que si le module déclare l'action courante et passe la whitelist. Il doit définir une fonction `<nom>_<action>` pour chaque action déclarée, sinon l'exécution s'arrête.
 - Nommage : les fonctions privées prennent le préfixe `_<nom>_`, les constantes du module le préfixe `BB_<NOM>_`. Le répertoire de base se calcule via `$(dirname "${BASH_SOURCE[0]}")`.
-- Chaque action doit être idempotente. Dans un `uninstall`, les purges apt se terminent par `|| true`, et on ne touche à k8s que si `kutils_is_api_available` réussit.
+- Chaque action doit être idempotente, y compris l'uninstall d'une installation partielle. On ne touche à k8s que si `kutils_is_api_available` réussit.
+- **Ne rien retirer qui n'ait pas été installé par la Bigbox** (un Ubuntu Desktop a déjà htop, parfois Docker, k3s, des dépôts apt...). Le registre `core/state_utils.sh` (`~/.config/bigbox/state/owned`) le permet :
+  - paquets : installer avec `apt_install` (n'enregistre que les paquets absents), retirer avec `apt_purge_owned` ;
+  - fichiers système : `state_create_file` (un fichier préexistant est conservé) et `state_remove_owned_files` ;
+  - le reste (k3s, groupe docker, binaires GitHub, configs générées) : `state_mark_owned` / `state_is_owned` / `state_unmark`.
 - Priorités actuelles : system −100, core 0, docker 100, k8s 200, services 300–340, nui 500, starship 800, qol 1000, catppucin 1001.
 
 **Gestion des erreurs :** `bigbox` tourne en `set -euo pipefail`. `module_run` pose un trap ERR (avec errtrace) qui affiche `❌ [module] action` à la première commande en échec. Ne jamais tester `$?` après coup (code mort avec errexit) : utiliser `if ! cmd`, `cmd || status=$?` ou `|| true` pour un échec toléré.
