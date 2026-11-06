@@ -1,1 +1,30 @@
-.idea
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Éditeurs
+*.swp
+*.swo
+*~
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Logs et fichiers temporaires
+*.log
+*.tmp
+*.bak
+
+# Secrets et environnements locaux
+.env
+.env.*
+
+# Helm
+modules/*/helm/charts/
+modules/*/helm/*.tgz
+
+# Claude Code (configuration locale personnelle)
+.claude/settings.local.json
+CLAUDE.local.md
