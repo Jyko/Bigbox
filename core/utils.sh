@@ -53,12 +53,15 @@ apt_wrapper() {
     if log_is_debug; then
         # Comportement normal
         run_cmd sudo apt-get -y "$@"
-    else 
-        # Mode silencieux complet
-        run_cmd sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq -o=Dpkg::Use-Pty=0 "$@" </dev/null >/dev/null 2>&1
+    else
+        # Mode silencieux : run_cmd capture déjà stdout/stderr et ne les affiche qu'en cas d'erreur.
+        # Ne surtout pas rediriger la sortie de run_cmd elle-même, sinon son log d'erreur disparaît.
+        run_cmd sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq -o=Dpkg::Use-Pty=0 "$@" </dev/null
     fi
 }
 
+# Les variables de contrôle (SHOW_*) sont lues par menu.sh
+# shellcheck disable=SC2034
 parse_args() {
 
     # --------------------
