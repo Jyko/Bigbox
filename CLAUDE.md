@@ -51,6 +51,8 @@ helm lint modules/<nom>/helm            # dans la VM si helm n'est pas installé
 
 **Gestion des erreurs :** `bigbox` tourne en `set -euo pipefail`. `module_run` pose un trap ERR (avec errtrace) qui affiche `❌ [module] action` à la première commande en échec. Ne jamais tester `$?` après coup (code mort avec errexit) : utiliser `if ! cmd`, `cmd || status=$?` ou `|| true` pour un échec toléré.
 
+**Garde contre les attentes :** chaque action de module est surveillée par un watchdog (`_module_watchdog_start` dans `core/module.sh`). Au-delà de `BB_MODULE_TIMEOUT` secondes (900 par défaut, surchargeable par variable d'environnement), il tue les commandes en cours et l'action échoue avec `❌`. Les wrappers kubectl et helm sont aussi bornés (`--request-timeout`, `timeout`). Ne jamais lancer de `kubectl delete` qui attend (`--wait`, actif par défaut) sans `--timeout`, ni de boucle d'attente sans délai maximum.
+
 **Librairies partagées (`core/`) :** une fonction utile à plusieurs modules va ici. Conventions :
 - Exécuter les commandes externes via `run_cmd` (sortie capturée hors debug, stderr affiché en cas d'échec) ou via `run_cmd_silently` (pour les tests de condition). Passer par `apt_wrapper install|purge ...` pour apt. Ne pas rediriger la sortie de `run_cmd` (ni utiliser `run_cmd cmd > fichier`) : elle est capturée et le log d'erreur disparaîtrait.
 - Logger uniquement via `log_debug/info/warn/error/success` (`core/log.sh`). Les messages portent eux-mêmes leur mise en forme `\n`/`\r\t`.

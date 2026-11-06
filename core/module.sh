@@ -93,7 +93,9 @@ module_run() {
         fi
 
         log_success "\t⏳ [$module] $ACTION"
+        _module_watchdog_start "$module"
         "$func"
+        _module_watchdog_stop
         log_success "\r\t✅ [$module] $ACTION\n"
 
     done
@@ -107,6 +109,44 @@ module_run() {
     
 }
 
+# Garde contre les attentes prolongées : un processus de surveillance tue les commandes en cours
+# du module si son action dépasse BB_MODULE_TIMEOUT secondes. La commande tuée échoue, ce qui
+# déclenche le trap ERR et arrête la Bigbox avec le message habituel.
+# $1 module : Le nom du module surveillé
+_module_watchdog_start() {
+    local module="$1"
+    local bigbox_pid="$$"
+
+    (
+        trap - ERR
+        set +e
+        sleep "$BB_MODULE_TIMEOUT"
+        log_error "\r\t⏱️  [$module] $ACTION dépasse ${BB_MODULE_TIMEOUT}s : arrêt des commandes en cours (BB_MODULE_TIMEOUT pour ajuster)\n"
+        utils_kill_descendants "$bigbox_pid" "$BASHPID"
+    ) &
+    BB_MODULE_WATCHDOG_PID=$!
+    # disown : pas de notification "Terminated" quand la surveillance est arrêtée
+    disown "$BB_MODULE_WATCHDOG_PID"
+}
+
+_module_watchdog_stop() {
+    if [[ -z "${BB_MODULE_WATCHDOG_PID:-}" ]]; then
+        return 0
+    fi
+
+    # L'ordre compte : la surveillance d'abord (sans trap, SIGTERM la termine immédiatement),
+    # son sleep ensuite. Tuer le sleep en premier la laisserait reprendre la main et croire le délai écoulé.
+    local sleepers
+    mapfile -t sleepers < <(pgrep -P "$BB_MODULE_WATCHDOG_PID" || true)
+
+    kill -TERM "$BB_MODULE_WATCHDOG_PID" 2>/dev/null || true
+    if (( ${#sleepers[@]} > 0 )) && [[ -n "${sleepers[0]}" ]]; then
+        kill -TERM "${sleepers[@]}" 2>/dev/null || true
+    fi
+
+    BB_MODULE_WATCHDOG_PID=""
+}
+
 # Handler du trap ERR posé par module_run
 # $1 status : Le code retour de la commande en échec
 # $2 module : Le nom du module en cours d'exécution
@@ -118,6 +158,7 @@ _module_on_error() {
     # Seule une erreur du shell principal est fatale et doit être signalée.
     (( BASH_SUBSHELL == 0 )) || return 0
 
+    _module_watchdog_stop
     log_error "\r\t❌ [$module] $ACTION (code:$status)\n"
 }
 

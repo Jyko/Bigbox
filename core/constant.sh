@@ -25,6 +25,14 @@ BB_K8S_CONTEXT=bigbox
 BB_K8S_NAMESPACE=bigbox
 # Délai maximum d'attente de l'API Kubernetes, en secondes
 BB_K8S_KUBECTL_TIMEOUT=60
+# Délai maximum d'une requête kubectl vers l'API (kubectl n'en a aucun par défaut)
+BB_K8S_REQUEST_TIMEOUT="15s"
+# Durée maximum d'une commande kubectl ou helm complète, en secondes
+BB_K8S_COMMAND_TIMEOUT=180
+
+# Garde contre les attentes prolongées : durée maximum d'une action d'un module, en secondes.
+# Surchargeable : BB_MODULE_TIMEOUT=1800 ./bigbox install
+BB_MODULE_TIMEOUT="${BB_MODULE_TIMEOUT:-900}"
 
 # PostgreSQL de la Bigbox, vu depuis l'Host (doit rester cohérent avec modules/pg/helm/values.yaml)
 BB_PG_HOST=localhost

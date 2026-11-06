@@ -35,20 +35,25 @@ kutils_verify_kube_context() {
 }
 
 # Décorateur pour kubectl afin de toujour s'assurer que les commandes sont jouées dans le bon contexte (pas la PRD :D)
+# Garde : --request-timeout borne chaque requête vers l'API, timeout borne la commande complète.
 kutils_kubectl_wrapper() {
 
-    kubectl \
-        --context "$BB_K8S_CONTEXT" \
-        "$@"
+    timeout --kill-after=10s "$BB_K8S_COMMAND_TIMEOUT" \
+        kubectl \
+            --context "$BB_K8S_CONTEXT" \
+            --request-timeout "$BB_K8S_REQUEST_TIMEOUT" \
+            "$@"
 
 }
 
 # Décorateur pour helm afin de toujours s'assurer que les commandes sont jouées dans le bon contexte (toujours pas la PRD :D)
+# Garde : helm n'a pas de délai par requête, timeout borne la commande complète.
 kutils_helm_wrapper() {
 
-    helm \
-        --kube-context "$BB_K8S_CONTEXT" \
-        "$@"
+    timeout --kill-after=10s "$BB_K8S_COMMAND_TIMEOUT" \
+        helm \
+            --kube-context "$BB_K8S_CONTEXT" \
+            "$@"
 
 }
 
@@ -119,7 +124,9 @@ kutils_release_upgrade() {
         "$@"
 }
 
-# Désinstaller une release Helm avec suppression de toutes les ressources construites (PV compris)
+# Désinstaller une release Helm avec suppression de toutes les ressources construites.
+# Les PV n'ont pas à être supprimés à la main : la storage class local-path est en reclaimPolicy Delete,
+# le PV est supprimé avec sa PVC. (Ils ne portent d'ailleurs pas les labels du chart.)
 #
 # $1 release_name   : Le nom de la release Helm à désinstaller
 # $2 chart_name     : Le nom de la Chart Helm de la release à désinstaller
@@ -137,20 +144,8 @@ kutils_release_uninstall() {
         return 2
     fi
 
+    # Sans --wait : helm rend la main dès que les objets sont supprimés, sans attendre l'arrêt des pods
     kutils_helm_wrapper uninstall "$release_name" --namespace "$BB_K8S_NAMESPACE"
-
-    # Récupération et suppression des PVs associés à la release
-    local label_selector="app.kubernetes.io/instance=${release_name},app.kubernetes.io/name=${chart_name}"
-
-    local pvs pv
-    mapfile -t pvs < <(kutils_kubectl_wrapper get pv -l "$label_selector" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
-
-    for pv in "${pvs[@]}"; do
-        [[ -z "$pv" ]] && continue
-        kutils_kubectl_wrapper delete pv "$pv" || true
-    done
-
-    return 0
 }
 
 # Arrêter une release Helm sans la désinstaller : scale des controllers à 0 et suppression

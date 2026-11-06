@@ -252,8 +252,10 @@ _k8s_namespace_install() {
 
 _k8s_namespace_uninstall() {
     if _k8s_namespace_verify; then
-        # Détruit le reste des ressources persistantes que les stacks auraient laissés (PVC, PV, ...)
-        run_cmd kutils_kubectl_wrapper delete namespace "$BB_K8S_NAMESPACE"
+        # --wait=false : kubectl attend sinon (sans limite) la finalisation de tout le contenu du namespace,
+        # y compris l'arrêt des pods des releases tout juste désinstallées. C'est inutile ici : le cluster
+        # entier (données et stockage local-path compris) est détruit juste après par k3s-uninstall.sh.
+        run_cmd kutils_kubectl_wrapper delete namespace "$BB_K8S_NAMESPACE" --wait=false
     fi
 }
 

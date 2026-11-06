@@ -160,6 +160,24 @@ parse_args() {
     fi
 }
 
+# Envoyer SIGTERM à tous les descendants d'un processus (les plus profonds d'abord)
+# $1 pid        : Le processus dont les descendants sont tués
+# $2 exclude    : Un PID à épargner, avec ses descendants (optionnel)
+# Les processus lancés via sudo appartiennent à root et ne peuvent pas être tués ainsi.
+utils_kill_descendants() {
+    local pid="$1"
+    local exclude="${2:-}"
+    local children child
+
+    mapfile -t children < <(pgrep -P "$pid" || true)
+
+    for child in "${children[@]}"; do
+        [[ -z "$child" || "$child" == "$exclude" ]] && continue
+        utils_kill_descendants "$child" "$exclude"
+        kill -TERM "$child" 2>/dev/null || true
+    done
+}
+
 # Retourne 0 si la Bigbox s'exécute dans une distribution WSL, sinon 1
 utils_is_wsl() {
     grep -qEi "(Microsoft|WSL)" /proc/version 2>/dev/null
