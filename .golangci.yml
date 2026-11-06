@@ -1,0 +1,45 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - errorlint
+    - gosec
+    - revive
+    - ineffassign
+    - unused
+  settings:
+    errcheck:
+      # Écritures console : un échec d'écriture sur stdout/stderr n'est pas actionnable
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+    gosec:
+      excludes:
+        - G204 # lancer des commandes externes est le rôle du Runner
+        - G304 # lecture de fichiers dont le chemin vient de la configuration (bigbox.yaml, journaux)
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: indent-error-flow
+        - name: error-strings
+          disabled: true # messages en français, avec majuscules et ponctuation
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt

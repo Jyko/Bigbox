@@ -1,0 +1,4 @@
+✓ docker     running  conforme : démarrée  (feature docker)
+✓ k3s        running  conforme : démarrée  (feature k3s)
+✓ cnpg       running  conforme : démarrée  (feature cnpg)
+✓ pg         running  conforme : démarrée  (feature pg)

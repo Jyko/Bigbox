@@ -1,0 +1,5 @@
+✗ nats › retirer la release
+  cause    : timeout
+✗ apt › purger les paquets
+  stderr   : E: paquet verrouillé
+  journal  : /j.jsonl (run ab12)

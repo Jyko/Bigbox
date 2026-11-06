@@ -1,0 +1,4 @@
+Bigbox apply terminé en 3 min 12 s : 14 ok, 6 modifiés, 2 ignorés, 1 échec
+  ✗ sftp › charger les utilisateurs   (voir ci-dessus)
+Shell : nouvelles commandes kubectl, helm, psql ; lancez `exec bash`
+Journal : ~/.local/state/bigbox/logs/2026-11-06T14-03-12-apply.jsonl

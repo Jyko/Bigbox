@@ -1,0 +1,7 @@
+# État désiré de la Bigbox : décrivez ce que vous voulez, puis lancez « bigbox apply ».
+# « bigbox plan » affiche l'écart avec la machine sans rien modifier.
+apiVersion: bigbox.dev/v1
+profile: minimal # desktop | wsl | minimal : préremplit les features
+features:
+  docker:
+    state: running

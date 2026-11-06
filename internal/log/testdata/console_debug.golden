@@ -1,0 +1,9 @@
+▸ docker
+    $ apt-get install -y docker-ce
+    ↳ code 0 (12 s)
+  ✓ Installation des paquets Docker  modifié, 12 s
+  ✗ Ajout au groupe docker  échec après 2 s
+  – Activation du socket  ignoré : étape précédente en échec
+= k3s : conforme
+⚠ Le port 5432 est déjà utilisé port=5432
+Message libre

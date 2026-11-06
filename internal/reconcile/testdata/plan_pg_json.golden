@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "changes": 12,
+  "features": [
+    {
+      "name": "qol",
+      "desired": "absent",
+      "explicit": false,
+      "requiredBy": [],
+      "phase": "remove",
+      "changes": 0,
+      "observed": "absente",
+      "steps": []
+    },
+    {
+      "name": "nats",
+      "desired": "absent",
+      "explicit": false,
+      "requiredBy": [],
+      "phase": "remove",
+      "changes": 0,
+      "observed": "absente",
+      "steps": []
+    },
+    {
+      "name": "docker",
+      "desired": "running",
+      "explicit": true,
+      "requiredBy": [],
+      "phase": "converge",
+      "changes": 3,
+      "observed": "absente",
+      "steps": [
+        {
+          "id": "install",
+          "label": "Installation de docker",
+          "action": "create",
+          "privileged": false
+        },
+        {
+          "id": "configure",
+          "label": "Configuration de docker",
+          "action": "create",
+          "privileged": false
+        },
+        {
+          "id": "start",
+          "label": "Démarrage de docker",
+          "action": "update",
+          "privileged": false
+        }
+      ]
+    },
+    {
+      "name": "k3s",
+      "desired": "running",
+      "explicit": false,
+      "requiredBy": [
+        "cnpg"
+      ],
+      "phase": "converge",
+      "changes": 3,
+      "observed": "absente",
+      "steps": [
+        {
+          "id": "install",
+          "label": "Installation de k3s",
+          "action": "create",
+          "privileged": false
+        },
+        {
+          "id": "configure",
+          "label": "Configuration de k3s",
+          "action": "create",
+          "privileged": false
+        },
+        {
+          "id": "start",
+          "label": "Démarrage de k3s",
+          "action": "update",
+          "privileged": false
+        }
+      ]
+    },
+    {
+      "name": "cnpg",
+      "desired": "running",
+      "explicit": false,
+      "requiredBy": [
+        "pg"
+      ],
+      "phase": "converge",
+      "changes": 3,
+      "observed": "absente",
+      "steps": [
+        {
+          "id": "install",
+          "label": "Installation de cnpg",
+          "action": "create",
+          "privileged": false
+        },
+        {
+          "id": "configure",
+          "label": "Configuration de cnpg",
+          "action": "create",
+          "privileged": false
+        },
+        {
+          "id": "start",
+          "label": "Démarrage de cnpg",
+          "action": "update",
+          "privileged": false
+        }
+      ]
+    },
+    {
+      "name": "pg",
+      "desired": "running",
+      "explicit": true,
+      "requiredBy": [],
+      "phase": "converge",
+      "changes": 3,
+      "observed": "absente",
+      "steps": [
+        {
+          "id": "install",
+          "label": "Installation de pg",
+          "action": "create",
+          "privileged": false
+        },
+        {
+          "id": "configure",
+          "label": "Configuration de pg",
+          "action": "create",
+          "privileged": false
+        },
+        {
+          "id": "start",
+          "label": "Démarrage de pg",
+          "action": "update",
+          "privileged": false
+        }
+      ]
+    }
+  ]
+}

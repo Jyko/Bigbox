@@ -95,6 +95,7 @@ _report_classify() {
 report_generate() {
     local release="$1" total_duration="$2"
     local baseline="$BB_SANDBOX_DIR/logs/baseline/$release.tsv"
+    [[ "${BB_TEST_IMPL:-bash}" == bash ]] || baseline="$BB_SANDBOX_DIR/logs/baseline/$BB_TEST_IMPL-$release.tsv"
     local junit="$BB_TEST_LOG_DIR/junit.xml" md="$BB_TEST_LOG_DIR/report.md"
     local case_name phase name status duration context_file class ref
     local tests failures errors suite_time
@@ -171,7 +172,7 @@ report_generate() {
     }
 
     {
-        printf '# Rapport de test : Ubuntu %s\n\n' "$release"
+        printf '# Rapport de test : Ubuntu %s (Bigbox %s)\n\n' "$release" "${BB_TEST_IMPL:-bash}"
         printf -- '- commit : `%s`%s\n' "$(git -C "$BB_TEST_REPO_DIR" rev-parse --short HEAD 2>/dev/null)" \
             "$( [[ -n "$(git -C "$BB_TEST_REPO_DIR" status --porcelain 2>/dev/null)" ]] && echo " (+ modifications non commitées)")"
         printf -- '- date : %s, durée : %s s\n' "$(date '+%Y-%m-%d %H:%M')" "$total_duration"
@@ -223,5 +224,5 @@ report_generate() {
 
 # Description d'un cas (TEST_DESCRIPTION de son fichier)
 _report_case_description() {
-    sed -n 's/^TEST_DESCRIPTION="\(.*\)"$/\1/p' "$BB_TEST_DIR/cases/$1.sh" 2>/dev/null
+    sed -n 's/^TEST_DESCRIPTION="\(.*\)"$/\1/p' "${BB_TEST_CASES_DIR:-$BB_TEST_DIR/cases}/$1.sh" 2>/dev/null
 }

@@ -1,0 +1,12 @@
+✗ ~/.config/bigbox/bigbox.yaml invalide
+  cause    : ~/.config/bigbox/bigbox.yaml:1:13 : apiVersion = "bigbox.dev/v2" invalide (admis : bigbox.dev/v1)
+             ~/.config/bigbox/bigbox.yaml:2:10 : profile = "laptop" invalide (admis : desktop, wsl, minimal)
+             ~/.config/bigbox/bigbox.yaml:3:1 : couleur : clé inconnue (admises : apiVersion, profile, features)
+             ~/.config/bigbox/bigbox.yaml:6:12 : features.pg.state = "on" invalide (admis : running, stopped, absent)
+             ~/.config/bigbox/bigbox.yaml:8:12 : features.docker.state = "stopped" invalide : docker ne s'arrête pas (admis : running, absent)
+             ~/.config/bigbox/bigbox.yaml:9:3 : features.hoppscotch : feature inconnue (retirée, voir migration.md 12.1)
+             ~/.config/bigbox/bigbox.yaml:10:3 : features.nats : pas encore disponible dans cette version de la Bigbox Go (migration en cours)
+             ~/.config/bigbox/bigbox.yaml:11:3 : features.inconnue : feature inconnue
+             ~/.config/bigbox/bigbox.yaml:13:16 : features.k3s.autostart = oui invalide (admis : true, false)
+             ~/.config/bigbox/bigbox.yaml:14:5 : features.k3s.replicas : option inconnue (admises : autostart)
+  à faire  : corrigez le fichier puis relancez ; `bigbox plan` vérifie le fichier sans rien modifier

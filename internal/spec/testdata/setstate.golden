@@ -1,0 +1,11 @@
+# Mon poste
+apiVersion: bigbox.dev/v1
+profile: wsl # profil WSL
+features:
+  # base de données
+  pg:
+    state: stopped # à arrêter le soir
+  k3s:
+    autostart: false
+  docker:
+    state: absent

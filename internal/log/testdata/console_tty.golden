@@ -1,0 +1,6 @@
+▸ docker
+  ⋯ Installation des paquets Docker[K  ✓ Installation des paquets Docker  modifié, 12 s
+  ⋯ Ajout au groupe docker[K  ✗ Ajout au groupe docker  échec après 2 s
+  – Activation du socket  ignoré : étape précédente en échec
+⚠ Le port 5432 est déjà utilisé port=5432
+Message libre

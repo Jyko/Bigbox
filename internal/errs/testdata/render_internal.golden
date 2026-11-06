@@ -1,0 +1,3 @@
+✗ erreur interne
+  cause    : index hors limites
+  à faire  : erreur inattendue de la Bigbox ; ouvrez un ticket en joignant `bigbox logs --last --raw`

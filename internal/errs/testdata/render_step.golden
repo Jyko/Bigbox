@@ -1,0 +1,6 @@
+✗ pg › déployer le Cluster bigbox-pg  (échec après 42 s)
+  cause    : webhook "mcluster.cnpg.io" injoignable (connection refused)
+  commande : helm upgrade --install bigbox-pg cnpg/cluster 0.9.0
+  à faire  : l'opérateur cnpg démarre encore ; relancez `bigbox apply`,
+             ou consultez `kubectl -n cnpg-system logs deploy/cnpg-cloudnative-pg`
+  journal  : ~/.local/state/bigbox/logs/2026-11-06T14-03-12-apply.jsonl (run 7f3a)

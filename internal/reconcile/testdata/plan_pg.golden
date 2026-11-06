@@ -1,0 +1,18 @@
+Plan : 8 à créer, 4 à modifier, 0 à retirer
+
++ docker
+    + Installation de docker
+    + Configuration de docker
+    ~ Démarrage de docker
++ k3s  (requise par cnpg)
+    + Installation de k3s
+    + Configuration de k3s
+    ~ Démarrage de k3s
++ cnpg  (requise par pg)
+    + Installation de cnpg
+    + Configuration de cnpg
+    ~ Démarrage de cnpg
++ pg
+    + Installation de pg
+    + Configuration de pg
+    ~ Démarrage de pg

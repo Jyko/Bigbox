@@ -5,12 +5,14 @@ set -euo pipefail
 #################################################################################
 # Tests de la Bigbox, rejouables, exécutés dans la sandbox QEMU/KVM (jamais sur l'hôte).
 #
-# Usage : tests/run.sh [-r 24.04[,26.04 ...]] [-t secondes] [cas ...]
+# Usage : tests/run.sh [--impl bash|go] [-r 24.04[,26.04 ...]] [-t secondes] [cas ...]
+#   --impl  implémentation testée (défaut bash) : bash joue tests/cases/ avec ./bigbox,
+#           go joue tests/cases-go/ avec la Bigbox Go (construite sur l'hôte, ~/bin/bigbox)
 #   -r  release(s) Ubuntu, séparées par des virgules (défaut 24.04). Une sandbox par release,
 #       créée si besoin ; plusieurs releases sont testées EN PARALLÈLE.
 #   -t  durée maximale de chaque install et de chaque uninstall, pour tous les cas
 #       (défaut : TEST_ACTION_TIMEOUT du cas, sinon 120 s)
-#   cas noms de fichiers de tests/cases/ (défaut : tous, deps en premier, full en dernier)
+#   cas noms de fichiers du répertoire des cas (défaut : tous, deps en premier, full en dernier)
 #
 # Chaque cas de scénario : reset au snapshot "pristine", poste préparé (prepare_desktop.sh),
 # install bornée DANS la VM, assertions, uninstall bornée, assertions.
@@ -33,8 +35,12 @@ BB_TEST_ACTION_TIMEOUT="$BB_TEST_DEFAULT_ACTION_TIMEOUT"
 BB_TEST_TIMEOUT_OVERRIDE=""
 BB_TEST_RELEASE="24.04"
 BB_TEST_SANDBOX_CMD=()
-# Partagé avec les runners enfants en mode parallèle
-BB_TEST_LOG_BASE="${BB_TEST_LOG_BASE:-$BB_SANDBOX_DIR/logs/$(date +%Y%m%d-%H%M%S)}"
+# Implémentation testée : bash (./bigbox, tests/cases/) ou go (~/bin/bigbox, tests/cases-go/)
+BB_TEST_IMPL=bash
+BB_TEST_CASES_DIR="$BB_TEST_DIR/cases"
+BB_TEST_BIGBOX=./bigbox
+# Partagé avec les runners enfants en mode parallèle (calculé dans main selon --impl)
+BB_TEST_LOG_BASE="${BB_TEST_LOG_BASE:-}"
 BB_TEST_LOG_DIR=""
 BB_TEST_LOG_FILE=/dev/null
 BB_TEST_RESULTS=/dev/null
@@ -97,7 +103,7 @@ _test_reset_sandbox() {
 # $1 : cas, $2 : fonction (test_run, test_after_install, test_after_uninstall), $3 : phase
 _test_assertions() {
     local case_name="$1" fn="$2" phase="$3" status=0 start=$SECONDS
-    local case_file="$BB_TEST_DIR/cases/$1.sh" out="$BB_TEST_LOG_DIR/context/$1.$3.out"
+    local case_file="$BB_TEST_CASES_DIR/$1.sh" out="$BB_TEST_LOG_DIR/context/$1.$3.out"
 
     { cat "$BB_TEST_DIR/lib/assert.sh" "$case_file"
       printf '\n%s\nreport_leftovers >/dev/null\nreport\n' "$fn"
@@ -107,34 +113,41 @@ _test_assertions() {
     return "$status"
 }
 
-# ./bigbox borné DANS la VM (un timeout côté hôte ne tuerait que le client SSH)
+# La Bigbox (Bash ou Go selon --impl) bornée DANS la VM (un timeout côté hôte ne tuerait que
+# le client SSH). TEST_ENV (variables du cas, ex. BIGBOX_ESSAI=1) préfixe la commande.
 # $1 : cas, $2 : phase, $3 : arguments de la Bigbox
 _test_bigbox() {
     local case_name="$1" phase="$2" args="$3" status=0 start=$SECONDS duration
-    local out="$BB_TEST_LOG_DIR/context/$1.$2.out"
+    local out="$BB_TEST_LOG_DIR/context/$1.$2.out" label="$BB_TEST_BIGBOX $3"
 
-    _test_step "./bigbox $args (max ${BB_TEST_ACTION_TIMEOUT} s)"
+    _test_step "$label (max ${BB_TEST_ACTION_TIMEOUT} s)"
     _test_vm $((BB_TEST_ACTION_TIMEOUT + 60)) \
-        "timeout --kill-after=10 $BB_TEST_ACTION_TIMEOUT ./bigbox $args" </dev/null 2>&1 \
+        "timeout --kill-after=10 $BB_TEST_ACTION_TIMEOUT env ${TEST_ENV:-} $BB_TEST_BIGBOX $args" </dev/null 2>&1 \
         | _test_capture "$out" || status=$?
     duration=$((SECONDS - start))
 
     if (( status == 0 )); then
-        _test_step "./bigbox $args : code 0 en $duration s"
-        report_record "$case_name" "$phase" "./bigbox $args" passed "$duration"
+        _test_step "$label : code 0 en $duration s"
+        report_record "$case_name" "$phase" "$label" passed "$duration"
         return 0
     fi
 
     local reason="code $status"
     (( status == 124 )) && reason="timeout de ${BB_TEST_ACTION_TIMEOUT} s atteint"
-    _test_step "❌ ./bigbox $args : $reason en $duration s"
-    # Contexte : modules terminés (✅/❌), erreurs de run_cmd (🧨) et fin de la sortie
-    report_record "$case_name" "$phase" "./bigbox $args" error "$duration" "$(
+    _test_step "❌ $label : $reason en $duration s"
+    report_record "$case_name" "$phase" "$label" error "$duration" "$(
         printf 'Échec : %s en %s s\n' "$reason" "$duration"
-        printf '\nModules :\n'
-        grep -oE '(✅|❌) \[[^]]+\] [a-z]+' "$out" | sed 's/^/  /' || true
-        printf '\nErreurs remontées (🧨) :\n'
-        grep -A8 '🧨' "$out" | head -n 30 || true
+        if [[ "$BB_TEST_IMPL" == go ]]; then
+            # Contexte : étapes en échec (✗) avec cause, commande, stderr, remède et journal
+            printf '\nÉtapes en échec :\n'
+            grep -A12 '^✗ ' "$out" | head -n 40 || true
+        else
+            # Contexte : modules terminés (✅/❌), erreurs de run_cmd (🧨)
+            printf '\nModules :\n'
+            grep -oE '(✅|❌) \[[^]]+\] [a-z]+' "$out" | sed 's/^/  /' || true
+            printf '\nErreurs remontées (🧨) :\n'
+            grep -A8 '🧨' "$out" | head -n 30 || true
+        fi
         printf '\nFin de la sortie :\n'
         tail -n 25 "$out"
     )"
@@ -144,9 +157,9 @@ _test_bigbox() {
 # Exécute un cas, retourne 0 s'il réussit
 # $1 : nom du cas
 _test_case() {
-    local name="$1" case_file="$BB_TEST_DIR/cases/$1.sh" failed=0
+    local name="$1" case_file="$BB_TEST_CASES_DIR/$1.sh" failed=0
     local TEST_DESCRIPTION="" TEST_INSTALL_ARGS="" TEST_UNINSTALL_ARGS="" TEST_RESET=true
-    local TEST_ACTION_TIMEOUT=""
+    local TEST_ACTION_TIMEOUT="" TEST_ENV=""
 
     # shellcheck source=/dev/null
     source "$case_file"
@@ -186,15 +199,27 @@ _test_usage() {
     printf '\nCas disponibles : %s\n' "$(_test_all_cases | paste -sd ' ')"
 }
 
-# deps (rapide, sans reset) en premier, full (le plus long) en dernier
+# deps (rapide, sans reset) en premier, full (le plus long) en dernier, s'ils existent
 _test_all_cases() {
     local f name
-    echo deps
-    for f in "$BB_TEST_DIR"/cases/*.sh; do
+    [[ -f "$BB_TEST_CASES_DIR/deps.sh" ]] && echo deps
+    for f in "$BB_TEST_CASES_DIR"/*.sh; do
+        [[ -f "$f" ]] || continue
         name=$(basename "$f" .sh)
         [[ "$name" == deps || "$name" == full ]] || echo "$name"
     done
-    echo full
+    [[ -f "$BB_TEST_CASES_DIR/full.sh" ]] && echo full
+    return 0
+}
+
+# $1 : implémentation (bash ou go)
+# shellcheck disable=SC2088 # ~ développé dans la VM, pas sur l'hôte
+_test_select_impl() {
+    case "$1" in
+        bash) BB_TEST_IMPL=bash; BB_TEST_CASES_DIR="$BB_TEST_DIR/cases"; BB_TEST_BIGBOX=./bigbox ;;
+        go)   BB_TEST_IMPL=go; BB_TEST_CASES_DIR="$BB_TEST_DIR/cases-go"; BB_TEST_BIGBOX='~/bin/bigbox' ;;
+        *)    echo "Implémentation inconnue : $1 (bash ou go)" >&2; return 2 ;;
+    esac
 }
 
 # Une release par runner enfant, en parallèle, sortie préfixée par la release
@@ -259,20 +284,31 @@ main() {
         case "$1" in
             -r) BB_TEST_RELEASE="${2:?release attendue après -r}"; shift 2 ;;
             -t) BB_TEST_TIMEOUT_OVERRIDE="${2:?durée attendue après -t}"; passthrough+=(-t "$2"); shift 2 ;;
+            --impl) _test_select_impl "${2:?implémentation attendue après --impl}" || return 2
+                    passthrough+=(--impl "$2"); shift 2 ;;
             -h|--help) _test_usage; return 0 ;;
             -*) echo "Option inconnue : $1" >&2; _test_usage >&2; return 2 ;;
             *) cases+=("$1"); shift ;;
         esac
     done
     (( ${#cases[@]} > 0 )) || mapfile -t cases < <(_test_all_cases)
+    if (( ${#cases[@]} == 0 )); then
+        echo "Aucun cas dans $BB_TEST_CASES_DIR" >&2
+        return 2
+    fi
 
     for name in "${cases[@]}"; do
-        if [[ ! -f "$BB_TEST_DIR/cases/$name.sh" ]]; then
+        if [[ ! -f "$BB_TEST_CASES_DIR/$name.sh" ]]; then
             echo "Cas inconnu : $name (disponibles : $(_test_all_cases | paste -sd ' '))" >&2
             return 2
         fi
     done
 
+    # Logs séparés par implémentation : <date> (bash, inchangé) ou <date>-go
+    if [[ -z "$BB_TEST_LOG_BASE" ]]; then
+        BB_TEST_LOG_BASE="$BB_SANDBOX_DIR/logs/$(date +%Y%m%d-%H%M%S)"
+        [[ "$BB_TEST_IMPL" == bash ]] || BB_TEST_LOG_BASE+="-$BB_TEST_IMPL"
+    fi
     mkdir -p "$BB_TEST_LOG_BASE"
     if [[ "$BB_TEST_RELEASE" == *,* ]]; then
         _test_parallel "$BB_TEST_RELEASE" "${passthrough[@]}" "${cases[@]}"
@@ -304,7 +340,7 @@ main() {
 
     report_generate "$BB_TEST_RELEASE" $((SECONDS - run_start))
 
-    printf '\n======== Résumé (Ubuntu %s)\n' "$BB_TEST_RELEASE"
+    printf '\n======== Résumé (Ubuntu %s, Bigbox %s)\n' "$BB_TEST_RELEASE" "$BB_TEST_IMPL"
     printf '%s\n' "${results[@]}"
     printf 'Rapport : %s\nJUnit   : %s\n' "$BB_TEST_LOG_DIR/report.md" "$BB_TEST_LOG_DIR/junit.xml"
     return "$failed"

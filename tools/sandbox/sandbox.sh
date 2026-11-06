@@ -320,15 +320,47 @@ sandbox_sync() {
 
     rsync -a --delete \
         --exclude ".idea/" \
+        --exclude "/bin/" \
         -e "ssh ${BB_SANDBOX_SSH_OPTS[*]}" \
         "$BB_SANDBOX_REPO_DIR/" "$BB_SANDBOX_SSH_TARGET:Bigbox/"
+
+    _sandbox_install_go
+}
+
+# Construire la Bigbox Go SUR L'HÔTE (binaire statique linux/amd64, jamais exécuté sur l'hôte)
+# et l'installer dans ~/bin/bigbox de la VM. Sans Go sur l'hôte, seule la Bigbox Bash est
+# disponible dans la VM.
+_sandbox_install_go() {
+    local binary="$BB_SANDBOX_REPO_DIR/bin/bigbox-linux-amd64" commit
+
+    if ! command -v go >/dev/null 2>&1; then
+        log_debug "\tGo absent de l'hôte : Bigbox Go non installée dans la sandbox\n"
+        return 0
+    fi
+    commit=$(git -C "$BB_SANDBOX_REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo dev)
+    if ! (cd "$BB_SANDBOX_REPO_DIR" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -trimpath -ldflags "-s -w -X main.version=sandbox-$commit" -o "$binary" ./cmd/bigbox); then
+        log_error "Construction de la Bigbox Go impossible\n"
+        return 1
+    fi
+    _sandbox_ssh mkdir -p bin
+    rsync -a -e "ssh ${BB_SANDBOX_SSH_OPTS[*]}" "$binary" "$BB_SANDBOX_SSH_TARGET:bin/bigbox"
 }
 
 # Exécuter la Bigbox DANS la sandbox
-# $@ : Arguments de la Bigbox
+# $@ : [--impl bash|go] puis arguments de la Bigbox
 sandbox_run() {
+    local impl=bash
+    if [[ "${1:-}" == --impl ]]; then
+        impl="${2:?implémentation attendue après --impl (bash ou go)}"
+        shift 2
+    fi
     sandbox_sync
-    _sandbox_exec "cd ~/Bigbox && ./bigbox $(printf '%q ' "$@")"
+    case "$impl" in
+        bash) _sandbox_exec "cd ~/Bigbox && ./bigbox $(printf '%q ' "$@")" ;;
+        go)   _sandbox_exec "cd ~/Bigbox && ~/bin/bigbox $(printf '%q ' "$@")" ;;
+        *)    log_error "Implémentation inconnue : $impl (bash ou go)\n"; return 2 ;;
+    esac
 }
 
 # Exécuter une commande arbitraire dans la sandbox (dépôt synchronisé dans ~/Bigbox)
@@ -400,7 +432,8 @@ sandbox_help() {
     \t  start | stop            Démarrer / arrêter la VM
     \t  status                  Afficher l'état de la VM (de toutes les VM sans -r)
     \t  sync                    Copier le dépôt dans ~/Bigbox de la VM
-    \t  run <args ...>          Synchroniser puis lancer ./bigbox <args> dans la VM
+    \t  run [--impl go] <args>  Synchroniser puis lancer ./bigbox <args> dans la VM ; avec --impl go,
+    \t                          la Bigbox Go (construite sur l'hôte, installée en ~/bin/bigbox)
     \t  exec <commande>         Synchroniser puis lancer une commande dans ~/Bigbox de la VM
     \t  ssh                     Ouvrir un shell dans la VM
     \t  reset                   Revenir au snapshot \"$BB_SANDBOX_SNAPSHOT\" (Ubuntu vierge)

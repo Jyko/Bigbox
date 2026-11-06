@@ -28,3 +28,6 @@ modules/*/helm/*.tgz
 # Claude Code (configuration locale personnelle)
 .claude/settings.local.json
 CLAUDE.local.md
+
+# Go
+/bin/
