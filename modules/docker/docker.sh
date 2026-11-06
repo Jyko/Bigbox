@@ -97,8 +97,9 @@ _docker_network_uninstall() {
     for cmd in iptables ip6tables; do
         command -v "$cmd-save" >/dev/null 2>&1 || continue
         rules=$(sudo "$cmd-save")
-        if [[ "$rules" == *DOCKER* ]]; then
-            grep -v DOCKER <<< "$rules" | sudo "$cmd-restore"
+        # Insensible à la casse : chaînes DOCKER* mais aussi règles sur l'interface docker0 (MASQUERADE)
+        if [[ "${rules,,}" == *docker* ]]; then
+            grep -vi docker <<< "$rules" | sudo "$cmd-restore"
         fi
     done
 }
