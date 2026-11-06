@@ -37,8 +37,10 @@ BB_K8S_COMMAND_TIMEOUT=180
 BB_MODULE_TIMEOUT="${BB_MODULE_TIMEOUT:-900}"
 
 # Options communes de curl : échec sur erreur HTTP, et 3 nouvelles tentatives sur toute erreur
-# (une coupure réseau ponctuelle, ex. curl (56), faisait échouer toute l'installation)
-BB_CURL_OPTS=(-fsSL --retry 3 --retry-all-errors --retry-delay 2)
+# (une coupure réseau ponctuelle, ex. curl (56), faisait échouer toute l'installation).
+# Garde contre les transferts bloqués : connexion bornée à 15 s, abandon (puis nouvelle
+# tentative) si le débit reste sous 1 Ko/s pendant 30 s.
+BB_CURL_OPTS=(-fsSL --retry 3 --retry-all-errors --retry-delay 2 --connect-timeout 15 --speed-limit 1024 --speed-time 30)
 
 # PostgreSQL de la Bigbox, vu depuis l'Host (doit rester cohérent avec modules/pg/helm/values.yaml)
 BB_PG_HOST=localhost

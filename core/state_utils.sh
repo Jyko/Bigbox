@@ -72,8 +72,11 @@ state_create_file() {
         return 0
     fi
 
-    fs_file_replace "$file"
+    # Enregistré AVANT l'écriture : le fichier est créé dès l'ouverture, alors que stdin
+    # (ex. un téléchargement curl) peut durer. Une interruption pendant l'écriture laisserait
+    # sinon un fichier orphelin que l'uninstall ignorerait.
     state_mark_owned "file:$file"
+    fs_file_replace "$file"
 }
 
 # Supprimer ces fichiers s'ils ont été créés par la Bigbox
