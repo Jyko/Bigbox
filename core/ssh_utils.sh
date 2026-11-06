@@ -61,5 +61,5 @@ ssh_delete_key() {
     private_key_path=$(ssh_get_key_path "$key_name")
     public_key_path=$(ssh_get_key_path "$key_name.pub")
 
-    rm -f "$$private_key_path" "$$public_key_path"
+    rm -f "$private_key_path" "$public_key_path"
 }

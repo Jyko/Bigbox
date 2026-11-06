@@ -122,6 +122,10 @@ parse_args() {
                 shift
                 ;;
             -m|--module)
+                if [[ $# -lt 2 || -z "$2" || "$2" == -* ]]; then
+                    log_error "\r\t❌ L'option $1 attend une liste de modules : $1 mod1,mod2\n"
+                    return 1
+                fi
                 # Nous splittons l'argument 2 (-m étant le $1, ce qui suit sera $2) sur la base d'un séparateur ',' et obtenons la whitelist
                 IFS=',' read -ra modules <<< "$2"
                 MODULE_WHITELIST+=("${modules[@]}")
@@ -153,12 +157,16 @@ parse_args() {
     fi
 }
 
+# Retourne 0 si la Bigbox s'exécute dans une distribution WSL, sinon 1
+utils_is_wsl() {
+    grep -qEi "(Microsoft|WSL)" /proc/version 2>/dev/null
+}
+
 get_host_ip() {
     local host_ip
 
-    # Nous tentons de détecter si nous sommes sur un WSL2
-    # Si nous sommes sur une WSL2, nous récupérons lIP du Windows host via le nameserver dans /etc/resolv.conf
-    if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
+    # Si nous sommes sur une WSL2, nous récupérons l'IP du Windows host via le nameserver dans /etc/resolv.conf
+    if utils_is_wsl; then
         host_ip=$(grep nameserver /etc/resolv.conf | awk '{print $2}')
         echo "$host_ip"
         return 0

@@ -173,6 +173,7 @@ kutils_release_stop() {
     local kind="deployments"
     local selector="app.kubernetes.io/instance=${release_name},app.kubernetes.io/name=${chart_name}"
 
+    local resources name
     mapfile -t resources < <(
         kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" get "$kind" \
             -l "$selector" \
@@ -180,14 +181,15 @@ kutils_release_stop() {
     )
 
     if (( ${#resources[@]} == 0 )); then
-        log_warn "Aucun $kind trouvé pour le selector [$selector]"
-    else
-        # Passage des replicas à 0 pour libérer les ressources
-        for name in $(kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" get "$kind" -l "$selector" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null); do
-            kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" scale "$kind/$name" --replicas=0
-            log_debug "Scaling $kind/$name to 0"
-        done
+        log_warn "Aucun $kind trouvé pour le selector [$selector] \n"
+        return 0
     fi
+
+    # Passage des replicas à 0 pour libérer les ressources
+    for name in "${resources[@]}"; do
+        kutils_kubectl_wrapper -n "$BB_K8S_NAMESPACE" scale "$kind/$name" --replicas=0
+        log_debug "Passage de $kind/$name à 0 replica \n"
+    done
 
     return 0
 }

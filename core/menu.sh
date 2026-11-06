@@ -84,7 +84,7 @@ _menu_help() {
     \t----------------------------------------------------------------
     \t  [ -h | --help ]                         Afficher cette aide
     \t  [ -d | --debug ]                        Activer le mode debug, tous les messages sont loggés
-    \t  [ -q | --quiet ]                        Activer le mode quiet, seules les erreurs sont loggées
+    \t  [ -s | --silent ]                       Activer le mode silencieux, seules les erreurs sont loggées
     \t  [ -v | --version ]                      Afficher la version
     \t  [ -b | --banner ]                       Afficher la bannière
     \t  [ -m | --module ] <mod1,mod2,...>       Filtrer les modules à exécuter si l'action selectionnée permet une exécution modulaire\n"

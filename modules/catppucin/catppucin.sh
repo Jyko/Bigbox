@@ -3,6 +3,8 @@
 
 BB_CATPPUCIN_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_CATPPUCIN_DOTFILES_DIR="$BB_CATPPUCIN_BASE_DIR/dotfiles"
+BB_CATPPUCIN_BAT_THEME_FILE="Catppuccin Mocha.tmTheme"
+BB_CATPPUCIN_BAT_THEME_LINE="--theme=\"Catppuccin Mocha\""
 
 # La malveillance maximum, ici on install Catppucin Moccha PARTOUT ! :sdk:
 catppucin_install() {
@@ -17,7 +19,7 @@ catppucin_install() {
     bat_themes_dir="$(batcat --config-dir)/themes"
     mkdir -p "$bat_themes_dir"
 
-    if [[ ! -f "$bat_themes_dir/Catppuccin Mocha.tmTheme" ]]; then 
+    if [[ ! -f "$bat_themes_dir/$BB_CATPPUCIN_BAT_THEME_FILE" ]]; then
         run_cmd wget -P "$bat_themes_dir" "https://github.com/catppuccin/bat/raw/main/themes/Catppuccin%20Mocha.tmTheme"
         run_cmd batcat cache --build
     fi
@@ -26,7 +28,7 @@ catppucin_install() {
     bat_config_file=$(batcat --config-file)
 
     if [[ -f "$bat_config_file" ]]; then
-        cfg_set_line -p="--theme=\"Catppuccin Mocha\"" -l="--theme=\"Catppuccin Mocha\"" -f="$bat_config_file"
+        cfg_set_line -p="$BB_CATPPUCIN_BAT_THEME_LINE" -l="$BB_CATPPUCIN_BAT_THEME_LINE" -f="$bat_config_file"
     fi
 
 }
@@ -36,7 +38,21 @@ catppucin_uninstall() {
 
     cfg_delete_dotfile "catppucin_env.sh"
 
-    run_cmd sudo rm -rf "/etc/bat/config"
+    # Retirer le thème de la configuration bat de l'utilisateur, sans toucher au reste de sa configuration
+    if command -v batcat >/dev/null 2>&1; then
+        local bat_config_file bat_theme_path
+        bat_config_file=$(batcat --config-file)
+        bat_theme_path="$(batcat --config-dir)/themes/$BB_CATPPUCIN_BAT_THEME_FILE"
+
+        if [[ -f "$bat_config_file" ]]; then
+            cfg_set_line -p="$BB_CATPPUCIN_BAT_THEME_LINE" -l="" -f="$bat_config_file"
+        fi
+
+        if [[ -f "$bat_theme_path" ]]; then
+            rm -f "$bat_theme_path"
+            run_cmd batcat cache --build
+        fi
+    fi
 
     apt_wrapper purge vivid || true
 

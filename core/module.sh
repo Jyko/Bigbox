@@ -14,9 +14,10 @@ module_load() {
         # Récupérer le root path du module
         path=$(dirname "$module")
 
-        name=$(jq -r '.name' "$module")
-        priority=$(jq -r '.priority' "$module")
-        entrypoint="$path/$(jq -r '.entrypoint' "$module")"
+        # "// empty" : une propriété absente donne une chaîne vide et non "null"
+        name=$(jq -r '.name // empty' "$module")
+        priority=$(jq -r '.priority // empty' "$module")
+        entrypoint="$path/$(jq -r '.entrypoint // empty' "$module")"
         
         log_debug "\r\t⏳ Chargement du module $module"
 
@@ -27,6 +28,13 @@ module_load() {
 
         if _module_is_whitelisted "$name" && _module_has_declared_action "$module"; then
 
+            # Deux modules de même priorité s'écraseraient dans MODULES, l'un des deux ne serait jamais exécuté
+            if [[ -n "${MODULES[$priority]:-}" ]]; then
+                log_error "Les modules ${MODULES[$priority]} et $name ont la même priorité $priority\n"
+                exit 1
+            fi
+
+            # shellcheck source=/dev/null
             source "$entrypoint"
 
             MODULES["$priority"]="$name"
@@ -111,7 +119,7 @@ _module_on_error() {
 }
 
 _module_verify() {
-    local name priority entrypoint
+    local name="" priority="" entrypoint=""
 
     for arg in "$@"; do
         case "$arg" in
@@ -127,8 +135,8 @@ _module_verify() {
         return 1
     fi
 
-    if [[ -z "$priority" ]]; then
-        log_error "La propriété \"priority\" est obligatoire\n"
+    if [[ ! "$priority" =~ ^-?[0-9]+$ ]]; then
+        log_error "La propriété \"priority\" est obligatoire et doit être un entier\n"
         return 1
     fi
 

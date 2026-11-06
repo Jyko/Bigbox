@@ -46,7 +46,7 @@ fs_assure_existing_file() {
     elif [[ -d "$file_path" ]]; then
         log_error "Le chemin $file_path est un répertoire et non un chemin de fichier comme attendu \n"
         return 2
-    elif [[ ! -f "$file_path " ]]; then
+    elif [[ ! -f "$file_path" ]]; then
         mkdir -p "$(dirname -- "$file_path")"
         touch "$file_path"
     fi
@@ -63,8 +63,8 @@ fs_delete_empty_file() {
     elif [[ -d "$file_path" ]]; then
         log_error "Le chemin $file_path est un répertoire et non un chemin de fichier comme attendu \n"
         return 2
-    elif [[ -f "$file_path " ]]; then
-        if [[ -s "$file_path" ]]; then
+    elif [[ -f "$file_path" ]]; then
+        if [[ ! -s "$file_path" ]]; then
             rm -f "$file_path"
             log_debug "Le fichier vide $file_path a été supprimé \n"
         else
@@ -104,38 +104,32 @@ fs_unsource_file() {
     
 }
 
-# Ajouter à ce texte à ce fichier en utilisant le wrapper de commande
+# Ajouter le contenu lu sur stdin à la fin de ce fichier (avec élévation de privilèges)
 #
 # $1        : Le chemin du fichier dans lequel ajouter ce contenu
-# $...      : Le contenu à ajouter
+# stdin     : Le contenu à ajouter
 fs_file_append() {
-    local file="$1"
-    shift
+    local file="${1:-}"
 
-    local tmpfile=$(mktemp)
+    if [[ -z "$file" ]]; then
+        log_error "Le chemin du fichier à compléter est obligatoire \n"
+        return 2
+    fi
 
-    cat > "$tmpfile" "$@"
-
-    run_cmd sudo tee -a "$file" >/dev/null < "$tmpfile"
-
-    # Nettoyage du fichier temporaire
-    rm "$tmpfile"
+    run_cmd sudo tee -a "$file" >/dev/null
 }
 
-# Remplacer ce fichier par ce contenu en utilisant le wrapper de commande
+# Remplacer ce fichier par le contenu lu sur stdin (avec élévation de privilèges)
 #
-# $1        : Le chemin du fichier dans lequel ajouter ce contenu
-# $...      : Le contenu à ajouter
+# $1        : Le chemin du fichier à remplacer
+# stdin     : Le nouveau contenu
 fs_file_replace() {
-    local file="$1"
-    shift
+    local file="${1:-}"
 
-    local tmpfile=$(mktemp)
+    if [[ -z "$file" ]]; then
+        log_error "Le chemin du fichier à remplacer est obligatoire \n"
+        return 2
+    fi
 
-    cat > "$tmpfile" "$@"
-
-    run_cmd sudo tee -a "$file" >/dev/null < "$tmpfile"
-
-    # Nettoyage du fichier temporaire
-    rm "$tmpfile"
+    run_cmd sudo tee "$file" >/dev/null
 }

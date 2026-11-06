@@ -41,6 +41,12 @@ system_install() {
 
     system_verify
 
+    # La configuration de systemd via /etc/wsl.conf ne concerne que WSL
+    if ! utils_is_wsl; then
+        log_debug "Hors WSL, aucune configuration de $BB_SYSTEM_WSL_CONF_PATH nécessaire\n"
+        return 0
+    fi
+
     # Crée le fichier s'il n'existe pas
     if [[ ! -f "$BB_SYSTEM_WSL_CONF_PATH" ]]; then
         run_cmd sudo touch "$BB_SYSTEM_WSL_CONF_PATH"
@@ -49,7 +55,7 @@ system_install() {
     # Vérifie si systemd est déjà activé
     if ! grep -q "systemd *= *true" "$BB_SYSTEM_WSL_CONF_PATH"; then
 
-        fs_file_append $BB_SYSTEM_WSL_CONF_PATH <<EOF
+        fs_file_append "$BB_SYSTEM_WSL_CONF_PATH" <<EOF
 # Activer systemd pour certains outils de la Bigbox
 [boot]
 systemd=true

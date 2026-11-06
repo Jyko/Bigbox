@@ -21,6 +21,8 @@ BB_CFG_ENV_FILE="$BB_CFG_DOTFILES_DIR/env.sh"
 BB_K8S_CONFIG_DIR=$HOME/.kube
 BB_K8S_CONTEXT=bigbox
 BB_K8S_NAMESPACE=bigbox
+# Délai maximum d'attente de l'API Kubernetes, en secondes
+BB_K8S_KUBECTL_TIMEOUT=60
 
 # SSH
 BB_SSH_DIR=$HOME/.ssh/bigbox

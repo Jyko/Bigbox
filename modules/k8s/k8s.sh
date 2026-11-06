@@ -4,8 +4,6 @@
 BB_K8S_MODULE_BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BB_K8S_MODULE_DOTFILES_DIR="$BB_K8S_MODULE_BASE_DIR/dotfiles"
 
-BB_K8S_KUBECTL_TIMEOUT="60"
-
 BB_K8S_BIGBOX_FILE="$BB_K8S_CONFIG_DIR/bigbox.yaml"
 BB_K8S_BACKUP_FILE="$BB_K8S_CONFIG_DIR/backup-config.yaml"
 BB_K8S_STANDARD_FILE="$BB_K8S_CONFIG_DIR/config"
@@ -67,8 +65,9 @@ _k8s_k3s_uninstall() {
 # Kubernetes tools
 # --------------------
 _k8s_tools_verify() {
+    local cmd
     for cmd in kubectl kubens kubectx helm kubecolor; do
-        command -v $cmd >/dev/null 2>&1
+        command -v "$cmd" >/dev/null 2>&1 || return 1
     done
 }
 
