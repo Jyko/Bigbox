@@ -60,6 +60,27 @@ apt_wrapper() {
     fi
 }
 
+# Purger uniquement ceux de ces paquets qui sont installés.
+# apt-get purge échoue (et logge une erreur) sur un paquet inconnu des dépôts, par exemple un outil
+# installé depuis GitHub faute de paquet sur cette version d'Ubuntu.
+# $@ : Les paquets à purger
+apt_purge_installed() {
+    local pkg
+    local installed=()
+
+    for pkg in "$@"; do
+        if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            installed+=("$pkg")
+        fi
+    done
+
+    if (( ${#installed[@]} == 0 )); then
+        return 0
+    fi
+
+    apt_wrapper purge "${installed[@]}"
+}
+
 # Les variables de contrôle (SHOW_*) sont lues par menu.sh
 # shellcheck disable=SC2034
 parse_args() {

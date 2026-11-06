@@ -63,7 +63,7 @@ _k8s_k3s_install() {
     # installé par la Bigbox et qui, sans KUBECONFIG, lit /etc/rancher/k3s/k3s.yaml au lieu de ~/.kube/config.
     local tmp
     tmp=$(mktemp -d)
-    run_cmd curl -fsSL -o "$tmp/k3s-install.sh" https://get.k3s.io
+    run_cmd curl "${BB_CURL_OPTS[@]}" -o "$tmp/k3s-install.sh" https://get.k3s.io
     run_cmd env \
         INSTALL_K3S_VERSION="$BB_K8S_K3S_VERSION" \
         INSTALL_K3S_SYMLINK=skip \
@@ -107,14 +107,14 @@ _k8s_tools_install() {
 
     # Ajouter le répo officiel Kubernetes
     sudo mkdir -p -m 755 /etc/apt/keyrings
-    curl -fsSL "https://pkgs.k8s.io/core:/stable:/$BB_K8S_KUBECTL_MINOR_VERSION/deb/Release.key" | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    curl "${BB_CURL_OPTS[@]}" "https://pkgs.k8s.io/core:/stable:/$BB_K8S_KUBECTL_MINOR_VERSION/deb/Release.key" | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     fs_file_replace /etc/apt/sources.list.d/kubernetes.list <<< \
     "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/$BB_K8S_KUBECTL_MINOR_VERSION/deb/ /"
     sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
 
     # Ajouter le répo officiel de Helm
-    curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+    curl "${BB_CURL_OPTS[@]}" https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
     sudo tee /etc/apt/sources.list.d/helm-stable-debian.list > /dev/null <<< \
     'deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main'
 
@@ -129,14 +129,22 @@ _k8s_tools_install() {
     local tmp arch
     arch=$(dpkg --print-architecture)
     tmp=$(mktemp -d)
-    run_cmd curl -fsSL -o "$tmp/kubecolor.deb" \
+    run_cmd curl "${BB_CURL_OPTS[@]}" -o "$tmp/kubecolor.deb" \
         "https://github.com/kubecolor/kubecolor/releases/download/v$BB_K8S_KUBECOLOR_VERSION/kubecolor_${BB_K8S_KUBECOLOR_VERSION}_linux_${arch}.deb"
     apt_wrapper install "$tmp/kubecolor.deb"
     rm -rf "${tmp:?}"
 }
 
 _k8s_tools_uninstall() {
-    apt_wrapper purge kubectl kubectx helm kubecolor || true
+    # La purge de kubecolor retire aussi son dépôt (kubecolor.sources appartient au paquet)
+    apt_purge_installed kubectl kubectx helm kubecolor || true
+
+    # Dépôts et clés ajoutés par _k8s_tools_install
+    sudo rm -f \
+        /etc/apt/sources.list.d/kubernetes.list \
+        /etc/apt/keyrings/kubernetes-apt-keyring.gpg \
+        /etc/apt/sources.list.d/helm-stable-debian.list \
+        /usr/share/keyrings/helm.gpg
 }
 
 # --------------------

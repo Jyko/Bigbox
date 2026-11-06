@@ -20,7 +20,7 @@ catppucin_install() {
     mkdir -p "$bat_themes_dir"
 
     if [[ ! -f "$bat_themes_dir/$BB_CATPPUCIN_BAT_THEME_FILE" ]]; then
-        run_cmd wget -P "$bat_themes_dir" "https://github.com/catppuccin/bat/raw/main/themes/Catppuccin%20Mocha.tmTheme"
+        run_cmd wget --tries=3 -P "$bat_themes_dir" "https://github.com/catppuccin/bat/raw/main/themes/Catppuccin%20Mocha.tmTheme"
         run_cmd batcat cache --build
     fi
 
@@ -54,6 +54,6 @@ catppucin_uninstall() {
         fi
     fi
 
-    apt_wrapper purge vivid || true
+    apt_purge_installed vivid || true
 
 }

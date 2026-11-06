@@ -144,8 +144,9 @@ kutils_release_uninstall() {
         return 2
     fi
 
-    # Sans --wait : helm rend la main dès que les objets sont supprimés, sans attendre l'arrêt des pods
-    kutils_helm_wrapper uninstall "$release_name" --namespace "$BB_K8S_NAMESPACE"
+    # Sans --wait : helm rend la main dès que les objets sont supprimés, sans attendre l'arrêt des pods.
+    # --ignore-not-found : l'uninstall doit rester idempotent, même après une installation partielle.
+    kutils_helm_wrapper uninstall "$release_name" --namespace "$BB_K8S_NAMESPACE" --ignore-not-found
 }
 
 # Arrêter une release Helm sans la désinstaller : scale des controllers à 0 et suppression

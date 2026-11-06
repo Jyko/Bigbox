@@ -26,7 +26,7 @@ BB_DOCKER_CONFLICT_PACKAGES=(
 docker_install() {
 
     # Désinstaller les paquets qui pourraient entrer en conflit
-    apt_wrapper purge "${BB_DOCKER_CONFLICT_PACKAGES[@]}" || true
+    apt_purge_installed "${BB_DOCKER_CONFLICT_PACKAGES[@]}" || true
 
     # Nous vérifions après la purge des packages conflictuels si docker est bien installé
     if _docker_verify; then
@@ -35,7 +35,7 @@ docker_install() {
 
     # Ajout de la clef GPG Docker
     sudo install -m 0755 -d /etc/apt/keyrings
-    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo curl "${BB_CURL_OPTS[@]}" https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
     sudo chmod a+r /etc/apt/keyrings/docker.asc
 
     # Add the repository to Apt sources:
@@ -66,7 +66,7 @@ docker_uninstall() {
     # Pas besoin de verify, tout est idempotent dans les commandes de suppression
 
     # Nous supprimons les packages installés et les potentiels packages à conflit pour qu'une future installation se fasse sur des bases saines
-    apt_wrapper purge "${BB_DOCKER_PACKAGES[@]}" "${BB_DOCKER_CONFLICT_PACKAGES[@]}" || true
+    apt_purge_installed "${BB_DOCKER_PACKAGES[@]}" "${BB_DOCKER_CONFLICT_PACKAGES[@]}" || true
 
     # Suppression des images, conteneurs, volumes ...
     sudo rm -rf /var/lib/docker

@@ -34,6 +34,10 @@ BB_K8S_COMMAND_TIMEOUT=180
 # Surchargeable : BB_MODULE_TIMEOUT=1800 ./bigbox install
 BB_MODULE_TIMEOUT="${BB_MODULE_TIMEOUT:-900}"
 
+# Options communes de curl : échec sur erreur HTTP, et 3 nouvelles tentatives sur toute erreur
+# (une coupure réseau ponctuelle, ex. curl (56), faisait échouer toute l'installation)
+BB_CURL_OPTS=(-fsSL --retry 3 --retry-all-errors --retry-delay 2)
+
 # PostgreSQL de la Bigbox, vu depuis l'Host (doit rester cohérent avec modules/pg/helm/values.yaml)
 BB_PG_HOST=localhost
 BB_PG_PORT=30001

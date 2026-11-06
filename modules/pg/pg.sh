@@ -22,7 +22,7 @@ pg_install() {
 
 pg_uninstall() {
 
-    apt_wrapper purge "postgresql-client-$BB_PG_VERSION" || true
+    apt_purge_installed "postgresql-client-$BB_PG_VERSION" || true
     _pg_apt_repository_uninstall
 
     if run_cmd_silently kutils_is_api_available; then
@@ -47,7 +47,7 @@ _pg_apt_repository_install() {
     codename=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
 
     sudo install -m 0755 -d "$(dirname "$BB_PG_APT_KEY_FILE")"
-    run_cmd sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o "$BB_PG_APT_KEY_FILE"
+    run_cmd sudo curl "${BB_CURL_OPTS[@]}" https://www.postgresql.org/media/keys/ACCC4CF8.asc -o "$BB_PG_APT_KEY_FILE"
     sudo chmod 644 "$BB_PG_APT_KEY_FILE"
 
     echo "deb [signed-by=$BB_PG_APT_KEY_FILE] https://apt.postgresql.org/pub/repos/apt ${codename}-pgdg main" \

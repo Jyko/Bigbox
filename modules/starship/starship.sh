@@ -27,7 +27,7 @@ starship_uninstall() {
     cfg_delete_dotfile "starship_env.sh"
 
     rm -f "$BB_STARSHIP_CONFIG_FILE"
-    apt_wrapper purge starship || true
+    apt_purge_installed starship || true
     sudo rm -f "$BB_STARSHIP_BINARY"
 
 }
@@ -53,7 +53,7 @@ _starship_binary_install() {
     local tmp
     tmp=$(mktemp -d)
 
-    run_cmd curl -fsSL -o "$tmp/starship.tar.gz" \
+    run_cmd curl "${BB_CURL_OPTS[@]}" -o "$tmp/starship.tar.gz" \
         "https://github.com/starship/starship/releases/download/${BB_STARSHIP_VERSION}/starship-${arch}-unknown-linux-musl.tar.gz"
     tar -xzf "$tmp/starship.tar.gz" -C "$tmp" starship
     sudo install -m 0755 "$tmp/starship" "$BB_STARSHIP_BINARY"
