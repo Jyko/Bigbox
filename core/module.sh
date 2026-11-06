@@ -49,7 +49,7 @@ module_load() {
 module_run() {
 
     # Nous récupérons la configuration de l'action dans le resources/action.json
-    local order
+    local order is_reboot_wanted module module_priority func
     local sort_args=(-n)
 
     if [[ -z "$ACTION" ]]; then
@@ -63,6 +63,11 @@ module_run() {
     if [[ "$order" == "desc" ]]; then
         sort_args+=(-r)
     fi
+
+    # Avec errexit, la première commande en échec d'un module arrête la Bigbox.
+    # Le trap ERR (hérité par les fonctions grâce à errtrace) permet d'indiquer quel module a échoué.
+    set -o errtrace
+    trap '_module_on_error "$?" "$module"' ERR
 
     # Pour chaque module enregistré et trié, nous exécutons l'action
     for module_priority in $(printf "%s\n" "${!MODULES[@]}" | sort "${sort_args[@]}"); do
@@ -78,21 +83,31 @@ module_run() {
 
         log_success "\t⏳ [$module] $ACTION"
         "$func"
-        local status=$?
-        
-        if (( status ==  0 )); then
-            log_success "\r\t✅ [$module] $ACTION\n"
-        else
-            log_error "\r\t❌ [$module] $ACTION\n"
-            exit "$status"
-        fi
+        log_success "\r\t✅ [$module] $ACTION\n"
 
     done
+
+    trap - ERR
+    set +o errtrace
 
     if [[ "$is_reboot_wanted" == "true" ]]; then
         log_warn "\r\t ⚠️ Relancez votre shell ou executez \`source \$HOME/.bashrc\` pour prendre en compte la nouvelle configuration du shell ⚠️\n"
     fi
     
+}
+
+# Handler du trap ERR posé par module_run
+# $1 status : Le code retour de la commande en échec
+# $2 module : Le nom du module en cours d'exécution
+_module_on_error() {
+    local status="$1"
+    local module="$2"
+
+    # errtrace propage aussi le trap dans les substitutions de commande ($(...)), qui n'arrêtent pas le script.
+    # Seule une erreur du shell principal est fatale et doit être signalée.
+    (( BASH_SUBSHELL == 0 )) || return 0
+
+    log_error "\r\t❌ [$module] $ACTION (code:$status)\n"
 }
 
 _module_verify() {

@@ -18,9 +18,8 @@ hoppscotch_install() {
 
     # On failfast en tentant de récupérer l'IP de l'Host en amont
     local host_ip
-    host_ip=$(get_host_ip)
 
-    if [[ "$?" -ne 0 ]] || [[ -z "$host_ip" ]]; then
+    if ! host_ip=$(get_host_ip) || [[ -z "$host_ip" ]]; then
         log_error "L'IP de l'Host est inconnue\n"
         return 2
     fi
@@ -48,9 +47,8 @@ hoppscotch_upgrade() {
 
     # On failfast en tentant de récupérer l'IP de l'Host en amont
     local host_ip
-    host_ip=$(get_host_ip)
 
-    if [[ "$?" -ne 0 ]] || [[ -z "$host_ip" ]]; then
+    if ! host_ip=$(get_host_ip) || [[ -z "$host_ip" ]]; then
         log_error "L'IP de l'Host est inconnue\n"
         return 2
     fi
@@ -70,9 +68,8 @@ hoppscotch_start() {
 
     # On failfast en tentant de récupérer l'IP de l'Host en amont
     local host_ip
-    host_ip=$(get_host_ip)
 
-    if [[ "$?" -ne 0 ]] || [[ -z "$host_ip" ]]; then
+    if ! host_ip=$(get_host_ip) || [[ -z "$host_ip" ]]; then
         log_error "L'IP de l'Host est inconnue\n"
         return 2
     fi

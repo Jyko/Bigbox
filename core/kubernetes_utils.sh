@@ -116,8 +116,6 @@ kutils_release_upgrade() {
         --namespace "$BB_K8S_NAMESPACE" \
         --wait --timeout 30s \
         "$@"
-
-    return 0
 }
 
 # Désinstaller une release Helm avec suppression de toutes les ressources construites (PV compris)

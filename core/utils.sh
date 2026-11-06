@@ -13,21 +13,23 @@ run_cmd() {
     # En débug nous ne contrôlons pas stdout ou stderr et laissons le comportement par défaut.
     if log_is_debug; then
         "$@"
-    else
-        # En info et silent nous capturons stdout et stderr pour éviter de log toutes les commandes
-        local output
-        output="$("$@" 2>&1)"
-        local status=$?
-        
-        # En cas d'erreur, nous loggons stderr
-        if (( status != 0 )); then
-            log_error "🧨 code:${status:-1} '$@'"
-            # Réinjection du stderr sans modifier son format pour une meilleure compréhension des erreurs
-            printf "%s\n" "$output" >&2
-        fi
-
-        return $status
+        return
     fi
+
+    # En info et silent nous capturons stdout et stderr pour éviter de log toutes les commandes.
+    # Le "|| status=$?" est indispensable : avec errexit, une affectation en échec arrêterait le script
+    # avant que nous ayons pu logger l'erreur.
+    local output status=0
+    output="$("$@" 2>&1)" || status=$?
+
+    # En cas d'erreur, nous loggons stderr
+    if (( status != 0 )); then
+        log_error "🧨 code:${status} '$*'\n"
+        # Réinjection du stderr sans modifier son format pour une meilleure compréhension des erreurs
+        printf "%s\n" "$output" >&2
+    fi
+
+    return "$status"
 }
 
 # Wrapper universel de commandes qui ne print pas les erreurs en mode autre que debug
@@ -40,10 +42,8 @@ run_cmd_silently() {
     if log_is_debug; then
         "$@"
     else
-        # En info et silent nous capturons stdout et stderr pour éviter de log toutes les commandes
-        local output
-        output="$("$@" 2>&1)"
-        return $?
+        # En info et silent nous jetons stdout et stderr, seul le code retour compte
+        "$@" >/dev/null 2>&1
     fi
 }
 

@@ -44,6 +44,7 @@ _log_is_at_least() {
 
     if [[ -z "$level" ]]; then
         printf "\033[31mLe niveau de log à tester est obligatoire\033[0m\n" >&2
+        return 2
     fi
 
     (( "$LOG_LEVEL" <= "$level" ))
