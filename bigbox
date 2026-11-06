@@ -5,6 +5,15 @@ IFS=$'\n\t'
 # Demander l'élévation des privilèges dès le début
 sudo -v
 
+# jq est indispensable dès le chargement des librairies (lecture de resources/action.json),
+# bien avant que le module core ne l'installe. Sur une Ubuntu vierge, nous l'installons ici.
+if ! command -v jq >/dev/null 2>&1; then
+    sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq install jq </dev/null >/dev/null 2>&1 || {
+        sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq update </dev/null >/dev/null 2>&1
+        sudo env DEBIAN_FRONTEND=noninteractive apt-get -y -qq install jq </dev/null >/dev/null 2>&1
+    }
+fi
+
 # Bonne pratique, pour définir le répertoire du script
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
