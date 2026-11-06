@@ -51,6 +51,7 @@ _k8s_k3s_verify() {
 _k8s_k3s_install() {
 
     if _k8s_k3s_verify; then
+        _k8s_k3s_remove_kubectl_symlink
         return 0
     fi
 
@@ -58,12 +59,26 @@ _k8s_k3s_install() {
     # ne peut pas exécuter un script tronqué. La version de k3s est épinglée, le script vérifie
     # lui-même la somme SHA256 du binaire.
     # K3S_KUBECONFIG_MODE=600 : le kubeconfig admin du cluster n'est lisible que par root.
+    # INSTALL_K3S_SYMLINK=skip : pas de /usr/local/bin/kubectl -> k3s, prioritaire dans le PATH sur le kubectl
+    # installé par la Bigbox et qui, sans KUBECONFIG, lit /etc/rancher/k3s/k3s.yaml au lieu de ~/.kube/config.
     local tmp
     tmp=$(mktemp -d)
     run_cmd curl -fsSL -o "$tmp/k3s-install.sh" https://get.k3s.io
-    run_cmd env INSTALL_K3S_VERSION="$BB_K8S_K3S_VERSION" K3S_KUBECONFIG_MODE=600 sh "$tmp/k3s-install.sh"
+    run_cmd env \
+        INSTALL_K3S_VERSION="$BB_K8S_K3S_VERSION" \
+        INSTALL_K3S_SYMLINK=skip \
+        K3S_KUBECONFIG_MODE=600 \
+        sh "$tmp/k3s-install.sh"
     rm -rf "${tmp:?}"
 
+}
+
+# Supprimer le lien kubectl -> k3s laissé par une installation antérieure de k3s (voir INSTALL_K3S_SYMLINK)
+_k8s_k3s_remove_kubectl_symlink() {
+    local link="/usr/local/bin/kubectl"
+    if [[ -L "$link" && "$(readlink "$link")" == *k3s ]]; then
+        sudo rm -f "$link"
+    fi
 }
 
 _k8s_k3s_uninstall() {
