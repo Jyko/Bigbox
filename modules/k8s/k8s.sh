@@ -87,6 +87,13 @@ _k8s_k3s_uninstall() {
     if _k8s_k3s_verify; then
         run_cmd sudo "$BB_K8S_K3S_UNINSTALL_SCRIPT"
     fi
+
+    # Restes laissés par le script : cgroups vides des pods, mot de passe du noeud, répertoires parents.
+    # rmdir --ignore-fail-on-non-empty : on ne supprime /etc/rancher et /var/lib/rancher que s'ils sont vides
+    # (ils peuvent héberger d'autres produits Rancher).
+    sudo systemctl stop kubepods.slice >/dev/null 2>&1 || true
+    sudo rm -rf /etc/rancher/node
+    sudo rmdir --ignore-fail-on-non-empty /etc/rancher /var/lib/rancher 2>/dev/null || true
 }
 
 # --------------------
@@ -232,7 +239,11 @@ _k8s_configuration_uninstall() {
     # Maintenant que la configuration actuelle et les fichiers la reflétant ne contiennent plus de trace de la Bigbox, nous recréons une configuration unifiée propre.
     _k8s_generate_unified_configuration
 
-    # Nous ne supprimons rien d'autre dans le $HOME/.kube, pour laisser les confs ajoutées par l'utilisateur.
+    # S'il ne reste aucun contexte, l'utilisateur n'avait pas de configuration Kubernetes avant la Bigbox :
+    # nous retirons les fichiers que nous avons créés. Sinon nous laissons ses configurations en l'état.
+    if [[ -z "$(KUBECONFIG="$BB_K8S_STANDARD_FILE" kubectl config get-contexts -o name 2>/dev/null)" ]]; then
+        rm -f "$BB_K8S_STANDARD_FILE" "$BB_K8S_UNIFIED_FILE" "$BB_K8S_BACKUP_FILE"
+    fi
 }
 
 # --------------------

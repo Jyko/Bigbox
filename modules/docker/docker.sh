@@ -81,6 +81,26 @@ docker_uninstall() {
         sudo groupdel docker
     fi
 
+    _docker_network_uninstall
+
+}
+
+# Retirer le bridge docker0 et les règles iptables DOCKER*, que la purge des paquets laisse en place
+_docker_network_uninstall() {
+    if ip link show docker0 >/dev/null 2>&1; then
+        sudo ip link delete docker0 || true
+    fi
+
+    # Les règles sont capturées dans une variable plutôt que testées via "iptables-save | grep -q" :
+    # avec pipefail, la sortie anticipée de grep -q (SIGPIPE) ferait échouer le test.
+    local cmd rules
+    for cmd in iptables ip6tables; do
+        command -v "$cmd-save" >/dev/null 2>&1 || continue
+        rules=$(sudo "$cmd-save")
+        if [[ "$rules" == *DOCKER* ]]; then
+            grep -v DOCKER <<< "$rules" | sudo "$cmd-restore"
+        fi
+    done
 }
 
 _docker_verify() {
