@@ -13,6 +13,8 @@
 | 2026-11-06 | **Plus aucun chart Helm maison** : charts officiels, values par défaut réutilisées au maximum (section 4) | décidé |
 | 2026-11-06 | **PostgreSQL via CNPG** (opérateur CloudNativePG + un `Cluster`), module `cnpg` séparé dont dépend `pg` (section 4.4) | décidé |
 | 2026-11-06 | **Retrait de Hoppscotch** (section 12.1) | décidé |
+| 2026-11-06 | **Bash gelé** : charts officiels, exposition et revue des paquets faits directement en Go, plus d'étapes 0 côté Bash (section 11) | décidé |
+| 2026-11-06 | **Go en parallèle** du Bash jusqu'à la parité, TU par implémentation (`tests/run.sh --impl bash\|go`) (section 11) | décidé |
 | 2026-11-06 | SFTP : chart officiel **SFTPGo** au lieu d'atmoz/sftp (section 4.5) | proposé |
 | 2026-11-06 | UI NATS : **application de bureau NUI** hors cluster, NUI dans k3s en repli (section 4.6) | proposé |
 | 2026-11-06 | Exposition : **Traefik (HTTP) + ServiceLB (TCP)** de k3s, fin des NodePorts 30000+ (section 5) | proposé |
@@ -405,8 +407,8 @@ automountServiceAccountToken: false
    (section 7).
 4. **Noms stables** : `fullnameOverride: bigbox-<nom>`.
 
-> La bascule des charts **ne dépend pas de Go** : elle peut se faire dès maintenant sur la Bigbox
-> Bash, et les TU sandbox existants la valident.
+> Techniquement, la bascule des charts ne dépend pas de Go. Le Bash étant gelé (section 11), elle sera
+> faite directement en Go (étapes 3 et 4 de [`plan-migration-go.md`](plan-migration-go.md)).
 
 ### 4.9 Points d'attention de la bascule
 
@@ -613,28 +615,32 @@ le démarrage du shell.
 
 ## 11. Plan de migration
 
+Le plan d'exécution détaillé est dans [`plan-migration-go.md`](plan-migration-go.md). Le Bash est
+gelé : les anciennes étapes 0a à 0d (Hoppscotch, charts, exposition et paquets côté Bash)
+disparaissent et sont absorbées par les étapes Go. Le Go est développé en parallèle du Bash jusqu'à
+la parité. Les logs, les erreurs et les messages sont conçus de zéro (section 2 du plan).
+
 | Étape | Contenu | Validation |
 |---|---|---|
-| 0a | **Retrait de Hoppscotch** de la Bigbox Bash (section 12.1) | TU `deps`, `full` |
-| 0b | **Charts officiels** sur la Bigbox Bash : `cnpg` + `pg`, NATS, WireMock, SFTPGo ; suppression des charts maison | TU `pg`, `full` sur 24.04 et 26.04 |
-| 0c | **Exposition** Traefik + ServiceLB, fin des NodePorts ; mesure de la consommation au repos | TU `full` (ports natifs, `*.bigbox.localhost`) |
-| 0d | **Revue des paquets** (section 8) appliquée au Bash : retraits sans risque, nats-cli en `.deb` | TU `deps`, `qol` |
-| 1 | Squelette Go : CLI, `bigbox.yaml`, `plan`/`apply`/`status`, registre, graphe, Runner ; features encore en Bash appelées par le binaire | TU sandbox inchangés |
-| 2 | Features de services en Go (SDK Helm, client-go, charts embarqués, secrets générés, hibernation) | TU + tests unitaires |
-| 3 | Features système (docker, k3s avec `config.yaml`, chiffrement des secrets) | TU `deps`, `full` |
-| 4 | Shell : dotfiles à plat, complétions en cache, outils QoL | TU `qol` |
-| 5 | Ressources : `start`/`stop` global, timer de mise en veille, Sablier pour les UI | mesures avant/après |
-| 6 | Profil Desktop (VM sandbox avec Ubuntu Desktop) | TU dédié `desktop` |
-| 7 | Livraison goreleaser (`.deb`, archives), suppression du Bash ; lanceur Windows | installation du `.deb` en sandbox, test manuel Windows 11 |
+| 1 | Socle : CLI, erreurs typées, logs structurés et journal, Runner, registre, `bigbox.yaml`, graphe, réconciliation, `tests/run.sh --impl go` | tests unitaires + lint, `bigbox plan` en sandbox |
+| 2 | Système : apt, téléchargements épinglés, docker, k3s (`config.yaml`, chiffrement des secrets), revue des paquets | TU Go `system`, `k3s`, `idempotence` |
+| 3 | Couche cluster et secrets : client-go, SDK Helm, charts embarqués, secrets générés, Traefik + ServiceLB | tests unitaires, TU `k3s` étendu |
+| 4 | Services : `cnpg` + `pg`, NATS, WireMock, SFTPGo ; hibernation et scale à 0 | TU Go `pg`, `full` |
+| 5 | Shell : dotfiles à plat, complétions en cache, outils QoL | TU Go `qol` |
+| 6 | Ressources : mesures, `start`/`stop` global, mise en veille, Sablier | mesures avant/après |
+| 7 | Profil Desktop | TU `desktop` |
+| 8 | Bascule : `bigbox adopt` (reprise d'un poste Bash), goreleaser, suppression du Bash, lanceur Windows | TU `adopt`, `.deb` en sandbox |
 
-Les TU sandbox (`tests/run.sh`) sont des tests boîte noire, indépendants du langage. Ils restent le
-filet de non-régression de bout en bout.
+Les TU sandbox (`tests/run.sh`) sont des tests boîte noire. Les cas Bash actuels servent de
+référence de parité ; les cas Go vivent dans `tests/cases-go/` jusqu'à la bascule.
 
 ## 12. Annexes
 
-### 12.1 Retrait de Hoppscotch : ce qu'il faudra toucher côté Bash
+### 12.1 Retrait de Hoppscotch : ce que le Bash contient
 
-Recensé le 2026-11-06, à appliquer à l'étape 0a :
+Recensé le 2026-11-06. Le Bash étant gelé, Hoppscotch n'est simplement **pas porté en Go** : la liste
+ci-dessous ne sert plus qu'à la reprise des postes existants (`bigbox adopt`, étape 8) et à la
+suppression du Bash.
 
 - `modules/hoppscotch/` : supprimer le module (script, `module.json`, chart).
 - `tests/cases/deps.sh` : 5 assertions de résolution citent hoppscotch.
