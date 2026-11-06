@@ -116,7 +116,10 @@ fs_file_append() {
         return 2
     fi
 
-    run_cmd sudo tee -a "$file" >/dev/null
+    # sh -c 'cat >>' plutôt que tee : tee recopie le contenu sur stdout, capturé par run_cmd
+    # (avertissement "ignored null byte" pour un contenu binaire comme une clé GPG)
+    # shellcheck disable=SC2016 # $1 est développé par sh, pas par bash
+    run_cmd sudo sh -c 'cat >> "$1"' sh "$file"
 }
 
 # Remplacer ce fichier par le contenu lu sur stdin (avec élévation de privilèges)
@@ -131,5 +134,7 @@ fs_file_replace() {
         return 2
     fi
 
-    run_cmd sudo tee "$file" >/dev/null
+    # sh -c 'cat >' plutôt que tee : voir fs_file_append
+    # shellcheck disable=SC2016 # $1 est développé par sh, pas par bash
+    run_cmd sudo sh -c 'cat > "$1"' sh "$file"
 }

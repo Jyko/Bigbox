@@ -213,7 +213,8 @@ module_run() {
     # Dépendances apt devenues orphelines après la purge des paquets des modules (ex. pigz, libpq5)
     if [[ "$(action_get_property "autoremove" "false")" == "true" ]]; then
         log_success "\t⏳ Suppression des paquets orphelins (apt autoremove)"
-        apt_wrapper autoremove
+        # --purge : comme pour les paquets des modules, aucune configuration résiduelle (état "rc")
+        apt_wrapper autoremove --purge
         log_success "\r\t✅ Suppression des paquets orphelins (apt autoremove)\n"
     fi
 
