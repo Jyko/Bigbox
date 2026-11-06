@@ -8,20 +8,24 @@ La Bigbox est un outil 100 % Bash qui installe, désinstalle et pilote un enviro
 
 ## Commandes
 
-Il n'y a ni étape de build ni suite de tests. On valide une modification avec le linter, puis en lançant l'outil sur une vraie machine Ubuntu (ou une machine jetable).
+**Ne jamais lancer `./bigbox` (même `-h`) directement sur le poste de développement.** L'outil lance `sudo -v` dès le démarrage et modifie réellement la machine : apt, systemd, `~/.bashrc`, `~/.kube`, `~/.ssh/bigbox`, `~/.config`. Toute exécution passe par la sandbox QEMU/KVM :
 
 ```sh
-./bigbox install                        # tous les modules, priorité croissante (pas de -m)
-./bigbox uninstall                      # tous les modules, priorité décroissante (pas de -m)
-./bigbox start|stop|upgrade -m pg,nats  # seulement les modules listés
-./bigbox install -d                     # debug : affiche la sortie de toutes les commandes
-./bigbox -h | -v | -b                   # aide / version / bannière
-
-shellcheck bigbox core/*.sh modules/*/*.sh modules/*/dotfiles/*.sh   # lint (installé par le module core)
-helm lint modules/<nom>/helm            # vérifier le chart d'un module
+tools/sandbox/sandbox.sh create [24.04|26.04]   # VM jetable + snapshot "pristine"
+tools/sandbox/sandbox.sh run install            # rsync du dépôt puis ./bigbox install dans la VM
+tools/sandbox/sandbox.sh run start -m pg,nats   # n'importe quels arguments de la Bigbox
+tools/sandbox/sandbox.sh exec '<commande>'      # commande arbitraire dans ~/Bigbox de la VM
+tools/sandbox/sandbox.sh reset                  # retour à une Ubuntu vierge
 ```
 
-`./bigbox` lance `sudo -v` dès le démarrage et modifie réellement la machine : apt, systemd, `~/.bashrc`, `~/.kube`, `~/.ssh/bigbox`, `~/.config/bigbox`. Ne pas l'exécuter à la légère.
+Actions de la Bigbox : `install`/`uninstall` (tous les modules, pas de `-m`), `start|stop|upgrade -m mod1,mod2`, options `-d` (debug), `-s` (silencieux), `-h`, `-v`, `-b`.
+
+Il n'y a pas de suite de tests. Lint, à lancer sur l'hôte (doit rester sans avertissement) :
+
+```sh
+shellcheck -x bigbox core/*.sh modules/*/*.sh modules/*/dotfiles/*.sh tools/sandbox/*.sh
+helm lint modules/<nom>/helm            # dans la VM si helm n'est pas installé sur l'hôte
+```
 
 ## Architecture
 
@@ -37,7 +41,7 @@ helm lint modules/<nom>/helm            # vérifier le chart d'un module
 **Modules :** chaque module vit dans `modules/<nom>/`, un seul module par répertoire.
 - `module.json` contient :
   - `name`
-  - `priority` : entier unique. Deux modules de même priorité s'écrasent dans le tableau associatif `MODULES`, et l'un des deux disparaît sans erreur.
+  - `priority` : entier unique (une collision arrête `module_load` avec une erreur).
   - `entrypoint` : le fichier `.sh` du module.
   - `actions` : la liste des actions supportées.
 - Le point d'entrée n'est sourcé que si le module déclare l'action courante et passe la whitelist. Il doit définir une fonction `<nom>_<action>` pour chaque action déclarée, sinon l'exécution s'arrête.
@@ -45,8 +49,10 @@ helm lint modules/<nom>/helm            # vérifier le chart d'un module
 - Chaque action doit être idempotente. Dans un `uninstall`, les purges apt se terminent par `|| true`, et on ne touche à k8s que si `kutils_is_api_available` réussit.
 - Priorités actuelles : system −100, core 0, docker 100, k8s 200, services 300–340, nui 500, starship 800, qol 1000, catppucin 1001.
 
+**Gestion des erreurs :** `bigbox` tourne en `set -euo pipefail`. `module_run` pose un trap ERR (avec errtrace) qui affiche `❌ [module] action` à la première commande en échec. Ne jamais tester `$?` après coup (code mort avec errexit) : utiliser `if ! cmd`, `cmd || status=$?` ou `|| true` pour un échec toléré.
+
 **Librairies partagées (`core/`) :** une fonction utile à plusieurs modules va ici. Conventions :
-- Exécuter les commandes externes via `run_cmd` (sortie capturée hors debug, stderr affiché en cas d'échec) ou via `run_cmd_silently` (pour les tests de condition). Passer par `apt_wrapper install|purge ...` pour apt.
+- Exécuter les commandes externes via `run_cmd` (sortie capturée hors debug, stderr affiché en cas d'échec) ou via `run_cmd_silently` (pour les tests de condition). Passer par `apt_wrapper install|purge ...` pour apt. Ne pas rediriger la sortie de `run_cmd` (ni utiliser `run_cmd cmd > fichier`) : elle est capturée et le log d'erreur disparaîtrait.
 - Logger uniquement via `log_debug/info/warn/error/success` (`core/log.sh`). Les messages portent eux-mêmes leur mise en forme `\n`/`\r\t`.
 - Beaucoup de fonctions prennent des options au format `-k=valeur`, parsées par une boucle `for arg in "$@"; case`. Suivre le même style.
 - Kubernetes : toujours passer par les fonctions `kutils_*` (`core/kubernetes_utils.sh`). Leurs wrappers kubectl/helm forcent le contexte `bigbox`.
@@ -62,10 +68,6 @@ helm lint modules/<nom>/helm            # vérifier le chart d'un module
 - Les variables d'environnement partagées passent par `cfg_modify_env`, qui écrit `dotfiles/env.sh`.
 - Si un module suivant a besoin d'une modification du PATH dans la même exécution, il faut aussi faire l'`export` dans le processus courant, comme le fait `core` pour Go.
 
+**Sécurité :** les versions des outils téléchargés hors apt (k3s, kubecolor, lazygit, zoxide, starship, nats-cli) et les tags d'images des charts sont épinglés dans des constantes `BB_*_VERSION` ou dans les `values.yaml`. Jamais de `curl | sh`, ni de fichier temporaire à chemin prévisible : télécharger dans un `mktemp -d`. Les secrets passent par des `Secret` k8s et des fichiers en `600`, et tout `rm -rf "$VAR"` est protégé par `${VAR:?}`.
+
 **Constantes globales** (chemins, contexte et namespace k8s, répertoire SSH) : elles sont dans `core/constant.sh`. La version affichée par `-v` vient de `info.json`.
-
-## Incohérences connues
-
-- L'aide affiche `-q|--quiet`, mais `parse_args` n'accepte que `-s|--silent`.
-- `modules/system/module.json` déclare une action `info` absente de `resources/action.json`.
-- Le FIXME de `_core_bigbox_configuration_uninstall` semble obsolète. Il dit que la config des modules est supprimée avant qu'ils aient pu faire leur nettoyage. Or `uninstall` s'exécute maintenant en ordre décroissant, donc `core` (priorité 0) passe après tous les autres modules qui ont une action d'uninstall.

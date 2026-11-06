@@ -164,19 +164,28 @@ _k8s_configuration_install() {
     chmod 700 "$BB_K8S_CONFIG_DIR"
     sudo chown -f -R "$USER" "$BB_K8S_CONFIG_DIR"
 
-    # Copier le fichier de config de base k3s vers le dossier de conf $HOME/.kube, lisible uniquement par $USER
-    sudo install -m 600 -o "$USER" -g "$(id -gn)" "$BB_K8S_K3S_KUBECONFIG" "$BB_K8S_BIGBOX_FILE"
-
     # Renommer le contexte, le user et le cluster k3s par défaut ("default") pour éviter les conflits et effets de bord.
-    # yq cible uniquement les champs concernés, contrairement à un sed qui remplacerait tous les mots "default" du fichier.
-    BB_CLUSTER="$BB_K8S_CLUSTER_NAME" BB_USER="$BB_K8S_USER_NAME" BB_CONTEXT="$BB_K8S_CONTEXT_NAME" yq -i '
-        (.clusters[] | select(.name == "default") | .name) = strenv(BB_CLUSTER) |
-        (.users[] | select(.name == "default") | .name) = strenv(BB_USER) |
-        (.contexts[] | select(.name == "default") | .context.cluster) = strenv(BB_CLUSTER) |
-        (.contexts[] | select(.name == "default") | .context.user) = strenv(BB_USER) |
-        (.contexts[] | select(.name == "default") | .name) = strenv(BB_CONTEXT) |
-        .["current-context"] = strenv(BB_CONTEXT)
-    ' "$BB_K8S_BIGBOX_FILE"
+    # kubectl convertit le kubeconfig de k3s en JSON, et jq ne modifie que les champs concernés,
+    # contrairement à un sed qui remplacerait tous les mots "default" du fichier.
+    # (Le yq des dépôts Ubuntu est le wrapper Python de jq, pas celui de mikefarah : nous ne nous en servons pas ici.)
+    # kubectl lit indifféremment un kubeconfig YAML ou JSON. umask 077 : fichier lisible uniquement par $USER.
+    (
+        umask 077
+        sudo cat "$BB_K8S_K3S_KUBECONFIG" \
+            | KUBECONFIG=/dev/stdin kubectl config view --raw -o json \
+            | jq \
+                --arg cluster "$BB_K8S_CLUSTER_NAME" \
+                --arg user "$BB_K8S_USER_NAME" \
+                --arg context "$BB_K8S_CONTEXT_NAME" '
+                (.clusters[] | select(.name == "default") | .name) = $cluster |
+                (.users[] | select(.name == "default") | .name) = $user |
+                (.contexts[] | select(.name == "default") | .context.cluster) = $cluster |
+                (.contexts[] | select(.name == "default") | .context.user) = $user |
+                (.contexts[] | select(.name == "default") | .name) = $context |
+                .["current-context"] = $context
+            ' > "$BB_K8S_BIGBOX_FILE"
+    )
+    chmod 600 "$BB_K8S_BIGBOX_FILE"
 
     # Maintenant que le fichier de configuration bigbox est prêt et idempotent, nous générons une nouvelle configuration unifiée
     _k8s_generate_unified_configuration
